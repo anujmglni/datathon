@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import cases, analytics, lookups
+from app.routers import cases, analytics, lookups, chat
 
 
 @asynccontextmanager
@@ -47,6 +47,7 @@ app.add_middleware(
 app.include_router(cases.router)
 app.include_router(analytics.router)
 app.include_router(lookups.router)
+app.include_router(chat.router)
 
 
 @app.get("/", tags=["Health"])
@@ -80,6 +81,8 @@ def api_info():
             "lookups_stations": "/api/lookups/stations",
             "lookups_crime_heads": "/api/lookups/crime-heads",
             "lookups_case_statuses": "/api/lookups/case-statuses",
+            "chat": "/api/chat",
+            "build_index": "/api/chat/build-index",
             "docs": "/docs",
         },
     }

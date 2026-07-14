@@ -237,7 +237,7 @@ async def get_repeat_offenders(
 @router.get("/age-distribution")
 async def get_age_distribution(
     db: AsyncSession = Depends(get_db),
-    entity: str = Query("accused", regex="^(accused|victim)$"),
+    entity: str = Query("accused", pattern="^(accused|victim)$"),
 ):
     """Age distribution of accused or victims, bucketed into ranges."""
 

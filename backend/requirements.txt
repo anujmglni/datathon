@@ -1,8 +1,23 @@
+# Core
 fastapi
 uvicorn[standard]
 pydantic
 pydantic-settings
+python-dotenv
+
+# Database
 sqlalchemy[asyncio]
 asyncpg
 psycopg2-binary
-python-dotenv
+
+# AI / LLM
+llama-index
+llama-index-llms-ollama
+llama-index-embeddings-huggingface
+llama-index-vector-stores-chroma
+chromadb
+
+# LangChain (for future LangGraph orchestration)
+langchain
+langchain-community
+langgraph
