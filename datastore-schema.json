@@ -1,0 +1,307 @@
+{
+  "project_name": "Project-Rainfall",
+  "catalyst_app_id": "45688000000013023",
+  "datastore": {
+    "tables": [
+      {
+        "table_name": "State",
+        "columns": [
+          {"name": "StateID", "type": "bigint", "is_primary_key": true},
+          {"name": "StateName", "type": "varchar", "max_length": 100},
+          {"name": "NationalityID", "type": "int"},
+          {"name": "Active", "type": "boolean"}
+        ]
+      },
+      {
+        "table_name": "District",
+        "columns": [
+          {"name": "DistrictID", "type": "bigint", "is_primary_key": true},
+          {"name": "DistrictName", "type": "varchar", "max_length": 100},
+          {"name": "StateID", "type": "bigint"},
+          {"name": "Active", "type": "boolean"}
+        ]
+      },
+      {
+        "table_name": "UnitType",
+        "columns": [
+          {"name": "UnitTypeID", "type": "bigint", "is_primary_key": true},
+          {"name": "UnitTypeName", "type": "varchar", "max_length": 100},
+          {"name": "CityDistState", "type": "varchar", "max_length": 50},
+          {"name": "Hierarchy", "type": "int"},
+          {"name": "Active", "type": "boolean"}
+        ]
+      },
+      {
+        "table_name": "Unit",
+        "columns": [
+          {"name": "UnitID", "type": "bigint", "is_primary_key": true},
+          {"name": "UnitName", "type": "varchar", "max_length": 150},
+          {"name": "TypeID", "type": "bigint"},
+          {"name": "DistrictID", "type": "bigint"},
+          {"name": "StateID", "type": "bigint"},
+          {"name": "Active", "type": "boolean"}
+        ]
+      },
+      {
+        "table_name": "Rank",
+        "columns": [
+          {"name": "RankID", "type": "bigint", "is_primary_key": true},
+          {"name": "RankName", "type": "varchar", "max_length": 100},
+          {"name": "Hierarchy", "type": "int"},
+          {"name": "Active", "type": "boolean"}
+        ]
+      },
+      {
+        "table_name": "Designation",
+        "columns": [
+          {"name": "DesignationID", "type": "bigint", "is_primary_key": true},
+          {"name": "DesignationName", "type": "varchar", "max_length": 100},
+          {"name": "SortOrder", "type": "int"},
+          {"name": "Active", "type": "boolean"}
+        ]
+      },
+      {
+        "table_name": "Employee",
+        "columns": [
+          {"name": "EmployeeID", "type": "bigint", "is_primary_key": true},
+          {"name": "DistrictID", "type": "bigint"},
+          {"name": "UnitID", "type": "bigint"},
+          {"name": "RankID", "type": "bigint"},
+          {"name": "DesignationID", "type": "bigint"},
+          {"name": "KGID", "type": "varchar", "max_length": 50},
+          {"name": "FirstName", "type": "varchar", "max_length": 100},
+          {"name": "EmployeeDOB", "type": "date"},
+          {"name": "GenderID", "type": "int"},
+          {"name": "AppointmentDate", "type": "date"}
+        ]
+      },
+      {
+        "table_name": "CaseCategory",
+        "columns": [
+          {"name": "CaseCategoryID", "type": "bigint", "is_primary_key": true},
+          {"name": "LookupValue", "type": "varchar", "max_length": 50}
+        ]
+      },
+      {
+        "table_name": "GravityOffence",
+        "columns": [
+          {"name": "GravityOffenceID", "type": "bigint", "is_primary_key": true},
+          {"name": "LookupValue", "type": "varchar", "max_length": 50}
+        ]
+      },
+      {
+        "table_name": "CrimeHead",
+        "columns": [
+          {"name": "CrimeHeadID", "type": "bigint", "is_primary_key": true},
+          {"name": "CrimeGroupName", "type": "varchar", "max_length": 150},
+          {"name": "Active", "type": "boolean"}
+        ]
+      },
+      {
+        "table_name": "CrimeSubHead",
+        "columns": [
+          {"name": "CrimeSubHeadID", "type": "bigint", "is_primary_key": true},
+          {"name": "CrimeHeadID", "type": "bigint"},
+          {"name": "CrimeHeadName", "type": "varchar", "max_length": 255},
+          {"name": "SeqID", "type": "int"}
+        ]
+      },
+      {
+        "table_name": "Act",
+        "columns": [
+          {"name": "ActCode", "type": "varchar", "max_length": 50, "is_primary_key": true},
+          {"name": "ActDescription", "type": "text"},
+          {"name": "ShortName", "type": "varchar", "max_length": 50},
+          {"name": "Active", "type": "boolean"}
+        ]
+      },
+      {
+        "table_name": "Section",
+        "columns": [
+          {"name": "ActCode", "type": "varchar", "max_length": 50},
+          {"name": "SectionCode", "type": "varchar", "max_length": 50},
+          {"name": "SectionDescription", "type": "text"},
+          {"name": "Active", "type": "boolean"}
+        ]
+      },
+      {
+        "table_name": "CasteMaster",
+        "columns": [
+          {"name": "caste_master_id", "type": "bigint", "is_primary_key": true},
+          {"name": "caste_master_name", "type": "varchar", "max_length": 100}
+        ]
+      },
+      {
+        "table_name": "ReligionMaster",
+        "columns": [
+          {"name": "ReligionID", "type": "bigint", "is_primary_key": true},
+          {"name": "ReligionName", "type": "varchar", "max_length": 100}
+        ]
+      },
+      {
+        "table_name": "OccupationMaster",
+        "columns": [
+          {"name": "OccupationID", "type": "bigint", "is_primary_key": true},
+          {"name": "OccupationName", "type": "varchar", "max_length": 100}
+        ]
+      },
+      {
+        "table_name": "CaseStatusMaster",
+        "columns": [
+          {"name": "CaseStatusID", "type": "bigint", "is_primary_key": true},
+          {"name": "CaseStatusName", "type": "varchar", "max_length": 100}
+        ]
+      },
+      {
+        "table_name": "Court",
+        "columns": [
+          {"name": "CourtID", "type": "bigint", "is_primary_key": true},
+          {"name": "CourtName", "type": "varchar", "max_length": 255},
+          {"name": "DistrictID", "type": "bigint"},
+          {"name": "StateID", "type": "bigint"},
+          {"name": "Active", "type": "boolean"}
+        ]
+      },
+      {
+        "table_name": "CaseMaster",
+        "columns": [
+          {"name": "CaseMasterID", "type": "bigint", "is_primary_key": true},
+          {"name": "CrimeNo", "type": "varchar", "max_length": 50},
+          {"name": "CaseNo", "type": "varchar", "max_length": 50},
+          {"name": "CrimeRegisteredDate", "type": "datetime"},
+          {"name": "PolicePersonID", "type": "bigint"},
+          {"name": "PoliceStationID", "type": "bigint"},
+          {"name": "CaseCategoryID", "type": "bigint"},
+          {"name": "GravityOffenceID", "type": "bigint"},
+          {"name": "CrimeMajorHeadID", "type": "bigint"},
+          {"name": "CrimeMinorHeadID", "type": "bigint"},
+          {"name": "CaseStatusID", "type": "bigint"},
+          {"name": "CourtID", "type": "bigint"},
+          {"name": "IncidentFromDate", "type": "datetime"},
+          {"name": "IncidentToDate", "type": "datetime"},
+          {"name": "latitude", "type": "double"},
+          {"name": "longitude", "type": "double"},
+          {"name": "BriefFacts", "type": "text"}
+        ]
+      },
+      {
+        "table_name": "ComplainantDetails",
+        "columns": [
+          {"name": "ComplainantID", "type": "bigint", "is_primary_key": true},
+          {"name": "CaseMasterID", "type": "bigint"},
+          {"name": "ComplainantName", "type": "varchar", "max_length": 150},
+          {"name": "AgeYear", "type": "int"},
+          {"name": "OccupationID", "type": "bigint"},
+          {"name": "ReligionID", "type": "bigint", "is_sensitive_protected": true},
+          {"name": "CasteID", "type": "bigint", "is_sensitive_protected": true},
+          {"name": "GenderID", "type": "int"}
+        ]
+      },
+      {
+        "table_name": "Victim",
+        "columns": [
+          {"name": "VictimMasterID", "type": "bigint", "is_primary_key": true},
+          {"name": "CaseMasterID", "type": "bigint"},
+          {"name": "VictimName", "type": "varchar", "max_length": 150},
+          {"name": "AgeYear", "type": "int"},
+          {"name": "GenderID", "type": "int"},
+          {"name": "VictimPolice", "type": "boolean"}
+        ]
+      },
+      {
+        "table_name": "Accused",
+        "columns": [
+          {"name": "AccusedMasterID", "type": "bigint", "is_primary_key": true},
+          {"name": "CaseMasterID", "type": "bigint"},
+          {"name": "AccusedName", "type": "varchar", "max_length": 150},
+          {"name": "AgeYear", "type": "int"},
+          {"name": "GenderID", "type": "int"},
+          {"name": "PersonID", "type": "varchar", "max_length": 50}
+        ]
+      },
+      {
+        "table_name": "ArrestSurrender",
+        "columns": [
+          {"name": "ArrestSurrenderID", "type": "bigint", "is_primary_key": true},
+          {"name": "CaseMasterID", "type": "bigint"},
+          {"name": "ArrestSurrenderTypeID", "type": "int"},
+          {"name": "ArrestSurrenderDate", "type": "datetime"},
+          {"name": "ArrestSurrenderDistrictId", "type": "bigint"},
+          {"name": "PoliceStationID", "type": "bigint"},
+          {"name": "IOID", "type": "bigint"},
+          {"name": "CourtID", "type": "bigint"},
+          {"name": "AccusedMasterID", "type": "bigint"}
+        ]
+      },
+      {
+        "table_name": "ActSectionAssociation",
+        "columns": [
+          {"name": "CaseMasterID", "type": "bigint"},
+          {"name": "ActID", "type": "varchar", "max_length": 50},
+          {"name": "SectionID", "type": "varchar", "max_length": 50},
+          {"name": "ActOrderID", "type": "int"},
+          {"name": "SectionOrderID", "type": "int"}
+        ]
+      },
+      {
+        "table_name": "ChargesheetDetails",
+        "columns": [
+          {"name": "CSID", "type": "bigint", "is_primary_key": true},
+          {"name": "CaseMasterID", "type": "bigint"},
+          {"name": "csdate", "type": "date"},
+          {"name": "cstype", "type": "varchar", "max_length": 10},
+          {"name": "PolicePersonID", "type": "bigint"}
+        ]
+      },
+      {
+        "table_name": "FinancialTransaction",
+        "columns": [
+          {"name": "TransactionID", "type": "bigint", "is_primary_key": true},
+          {"name": "CaseMasterID", "type": "bigint"},
+          {"name": "AccusedMasterID", "type": "bigint"},
+          {"name": "FraudType", "type": "varchar", "max_length": 100},
+          {"name": "AmountLostINR", "type": "double"},
+          {"name": "AmountRecoveredINR", "type": "double"},
+          {"name": "TransactionDate", "type": "date"},
+          {"name": "BankAccountLast4", "type": "varchar", "max_length": 10},
+          {"name": "Status", "type": "varchar", "max_length": 50}
+        ]
+      },
+      {
+        "table_name": "NetworkEdges",
+        "columns": [
+          {"name": "EdgeID", "type": "bigint", "is_primary_key": true},
+          {"name": "SourceAccusedID", "type": "bigint"},
+          {"name": "TargetAccusedID", "type": "bigint"},
+          {"name": "EdgeType", "type": "varchar", "max_length": 50},
+          {"name": "Weight", "type": "double"},
+          {"name": "SharedDetails", "type": "text"},
+          {"name": "LastUpdated", "type": "datetime"}
+        ]
+      },
+      {
+        "table_name": "QueryCache",
+        "columns": [
+          {"name": "QueryHash", "type": "varchar", "max_length": 64, "is_primary_key": true},
+          {"name": "QueryText", "type": "text"},
+          {"name": "AnswerText", "type": "text"},
+          {"name": "ChunksMetadata", "type": "text"},
+          {"name": "MetaLogs", "type": "text"},
+          {"name": "CachedAt", "type": "datetime"}
+        ]
+      },
+      {
+        "table_name": "AuditLog",
+        "columns": [
+          {"name": "LogID", "type": "bigint", "is_primary_key": true},
+          {"name": "UserID", "type": "varchar", "max_length": 100},
+          {"name": "UserRole", "type": "varchar", "max_length": 50},
+          {"name": "QueryString", "type": "text"},
+          {"name": "SQLExecuted", "type": "text"},
+          {"name": "RowsTouched", "type": "int"},
+          {"name": "Timestamp", "type": "datetime"}
+        ]
+      }
+    ]
+  }
+}
