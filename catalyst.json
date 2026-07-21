@@ -1,0 +1,16 @@
+{
+  "project_name": "ksp-crime-analytics-backend",
+  "project_id": "45688000000013023",
+  "appsail": [
+    {
+      "name": "ksp-crime-analytics-backend",
+      "source": "app_sail/ksp_backend"
+    }
+  ],
+  "scripts": {
+    "ingest": "python3 -m services.ingest"
+  },
+  "apig": {
+    "enabled": true
+  }
+}
