@@ -8,6 +8,10 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.db
+site-packages/
+.agents/
+catalyst_datastore_export/
 
 # OS metadata
 .DS_Store
