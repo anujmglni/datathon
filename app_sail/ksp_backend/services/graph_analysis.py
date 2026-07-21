@@ -18,15 +18,20 @@ def build_criminal_network(min_weight: float = 1.0) -> dict:
 
     case_accused_map = {}
     for r in accused_rows:
-        case_accused_map.setdefault(r["CaseMasterID"], []).append(r)
-        G.add_node(r["AccusedMasterID"], name=r["AccusedName"], person_id=r["PersonID"])
+        case_id = r.get("CaseMasterID") or r.get("casemasterid")
+        accused_id = r.get("AccusedMasterID") or r.get("accusedmasterid")
+        accused_name = r.get("AccusedName") or r.get("accusedname")
+        person_id = r.get("PersonID") or r.get("personid")
+        
+        case_accused_map.setdefault(case_id, []).append(r)
+        G.add_node(accused_id, name=accused_name, person_id=person_id)
 
     for case_id, members in case_accused_map.items():
         if len(members) > 1:
             for i in range(len(members)):
                 for j in range(i + 1, len(members)):
-                    u = members[i]["AccusedMasterID"]
-                    v = members[j]["AccusedMasterID"]
+                    u = members[i].get("AccusedMasterID") or members[i].get("accusedmasterid")
+                    v = members[j].get("AccusedMasterID") or members[j].get("accusedmasterid")
                     if G.has_edge(u, v):
                         G[u][v]["weight"] += 1.0
                     else:
