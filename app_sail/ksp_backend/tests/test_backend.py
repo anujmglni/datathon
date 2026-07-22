@@ -15,7 +15,8 @@ def test_intent_classification():
     res1 = classify_query("Show total theft cases in Bengaluru in 2023")
     assert res1["intent"] == "SQL_ANALYTICS"
     assert res1["district"] == "Bengaluru City" or res1["district"] == "Bengaluru District"
-    assert res1["year"] == "2023"
+    assert str(res1["year"]) == "2023"
+
 
     res2 = classify_query("Find criminal network and accomplices of accused A1")
     assert res2["intent"] == "NETWORK_ANALYSIS"
@@ -43,3 +44,18 @@ def test_database_and_graph():
     graph = build_criminal_network()
     assert "total_nodes" in graph
     assert "total_edges" in graph
+
+
+def test_hybrid_search_tantivy():
+    from services.hybrid_retrieval import execute_hybrid_search
+    intent_data = {
+        "district": "Bengaluru",
+        "crime_type": "murder",
+        "search_keywords": ["murder", "homicide"]
+    }
+    results, sql = execute_hybrid_search(intent_data, "murder homicide case in Bengaluru", top_k=5)
+    assert isinstance(results, list)
+    if results:
+        assert "_bm25_score" in results[0]
+        assert results[0]["_bm25_score"] >= 0.0
+
