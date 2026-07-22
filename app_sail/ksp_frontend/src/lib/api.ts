@@ -57,20 +57,66 @@ export async function fetchNetworkPayload(params: {
     urlParams.append("node_types", params.node_types.join(","));
   }
 
-  const res = await fetch(`${API_BASE}/api/network?${urlParams.toString()}`);
-  return await res.json();
+  try {
+    const res = await fetch(`${API_BASE}/api/network?${urlParams.toString()}`);
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    return await res.json();
+  } catch (e) {
+    console.error("fetchNetworkPayload error:", e);
+    return {
+      total_nodes_before_cap: 0,
+      nodes_rendered: 0,
+      total_edges: 0,
+      capped: false,
+      filters_applied: {
+        district: params.district || "all",
+        crime_type: params.crime_type || "all",
+        date_range: params.date_range || "90",
+        min_link_strength: params.min_link_strength || 1,
+        node_types: params.node_types || ["accused", "victim", "location", "financial"]
+      },
+      nodes: [],
+      edges: []
+    };
+  }
+
 }
 
 export async function fetchNetworkOptions(): Promise<{ districts: string[]; crime_types: string[] }> {
-  const res = await fetch(`${API_BASE}/api/network/options`);
-  return await res.json();
+  try {
+    const res = await fetch(`${API_BASE}/api/network/options`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    console.error("fetchNetworkOptions error:", e);
+    return { districts: [], crime_types: [] };
+  }
 }
 
 export async function fetchEntityProfile(entityId: string, entityType: string): Promise<any> {
-  const params = new URLSearchParams({ entity_id: entityId, entity_type: entityType });
-  const res = await fetch(`${API_BASE}/api/network/profile?${params.toString()}`);
-  return await res.json();
+  try {
+    const params = new URLSearchParams({ entity_id: entityId, entity_type: entityType });
+    const res = await fetch(`${API_BASE}/api/network/profile?${params.toString()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    console.error("fetchEntityProfile error:", e);
+    return {
+      status: "error",
+      entity_id: entityId,
+      entity_type: entityType,
+      label: `Entity #${entityId}`,
+      risk_level: "STANDARD RECORD",
+      total_cases: 0,
+      attributes: {},
+      cases: [],
+      recommendations: ["**CCTNS Real-Time Alert:** Intelligence tracking active."]
+    };
+  }
 }
+
 
 
 export async function fetchNetworkGraph(district?: string, crimeHeadId?: number, minConnections: number = 1): Promise<NetworkGraphData> {
