@@ -27,7 +27,9 @@ dist/
 build/
 .next/
 
-files.zip
+# Generated reports
+app_sail/ksp_backend/static/reports/
+
 synthetic_data/
 claude.pdf
 synthetic_data.zip
