@@ -23,7 +23,22 @@ from services.ingest import run_full_ingestion_pipeline, search_similar_past_cas
 from services.hybrid_retrieval import execute_hybrid_search
 from agent.llm_synthesizer import synthesize_rag_response
 
+from fastapi.responses import JSONResponse
+
 app = FastAPI(title="KSP Crime Intelligence API", version="1.0.0")
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    import traceback
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={
+            "status": "error",
+            "message": str(exc),
+            "detail": "An internal server error occurred. Please try again."
+        }
+    )
 
 # Static files for downloading generated reports
 static_dir = Path(__file__).resolve().parent / "static"
@@ -43,6 +58,7 @@ app.add_middleware(
 @app.head("/")
 def root_health():
     return {"status": "ok", "service": "KSP Crime Analytics API"}
+
 
 class QueryRequest(BaseModel):
     query: str
