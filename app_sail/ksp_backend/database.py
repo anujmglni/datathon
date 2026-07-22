@@ -5,10 +5,19 @@ and standalone PostgreSQL instances (Supabase, Neon, AWS RDS, Local Postgres).
 """
 
 import os
-import psycopg2
-import psycopg2.extras
-from psycopg2.pool import ThreadedConnectionPool
+import re
 import getpass
+import logging
+import sqlite3
+import pandas as pd
+from pathlib import Path
+import psycopg2
+from psycopg2.pool import ThreadedConnectionPool
+import psycopg2.extras
+from dotenv import load_dotenv
+
+load_dotenv()
+logger = logging.getLogger(__name__)
 
 # Environment Variables for PostgreSQL Configuration
 PG_HOST = os.environ.get("PG_HOST", "localhost")
@@ -51,11 +60,12 @@ def get_pg_pool():
                         database=PG_DATABASE,
                         connect_timeout=3
                     )
-            print("✅ PostgreSQL Threaded Connection Pool initialized.")
+            logger.debug("PostgreSQL Threaded Connection Pool initialized")
         except Exception as e:
-            print(f"⚠️ Could not connect to PostgreSQL ({e}). Falling back to local SQLite engine...")
+            logger.debug(f"Could not connect to PostgreSQL ({e}). Falling back to local SQLite engine...")
             return None
     return _pg_pool
+
 
 def get_connection():
     """
@@ -137,16 +147,16 @@ def seed_synthetic_data_to_postgres():
     synthetic_data_dir = base_dir / "files" / "synthetic_data"
 
     if not synthetic_data_dir.exists():
-        print(f"⚠️ Synthetic data directory not found at {synthetic_data_dir}")
+        logger.debug(f"Synthetic data directory not found at {synthetic_data_dir}")
         return
 
     conn, db_type = get_connection()
     if db_type != "postgresql":
-        print("⚠️ Not connected to PostgreSQL. Seeding skipped.")
+        logger.debug("Not connected to PostgreSQL. Seeding skipped.")
         release_connection(conn, db_type)
         return
 
-    print("⚡ Seeding PostgreSQL database from synthetic CSV datasets...")
+    logger.debug("Seeding PostgreSQL database from synthetic CSV datasets...")
     from sqlalchemy import create_engine, text
     try:
         engine = create_engine(DATABASE_URL or f"postgresql://{PG_USER}:{PG_PASSWORD}@{PG_HOST}:{PG_PORT}/{PG_DATABASE}")
@@ -178,9 +188,10 @@ def seed_synthetic_data_to_postgres():
             df = pd.read_csv(txt_file)
             df.columns = [c.lower() for c in df.columns]
             df.to_sql(table_name.lower(), engine, if_exists="replace", index=False)
-            print(f"  Loaded table: {table_name:<25} ({len(df):>6} rows)")
+            logger.debug(f"Loaded table: {table_name:<25} ({len(df):>6} rows)")
         except Exception as e:
-            print(f"  ❌ Error loading {table_name}: {e}")
+            logger.debug(f"Error loading {table_name}: {e}")
             
     release_connection(conn, db_type)
-    print("✅ PostgreSQL seeding complete.")
+    logger.debug("PostgreSQL seeding complete.")
+
