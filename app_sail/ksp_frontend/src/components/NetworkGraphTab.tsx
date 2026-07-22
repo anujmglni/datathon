@@ -23,7 +23,95 @@ import {
   Users
 } from "lucide-react";
 
+function generatePersonalizedRecommendations(profileData: any): string[] {
+  if (!profileData) return [];
+
+  const recs: string[] = [];
+  const cases: any[] = profileData.cases || [];
+  
+  const districts = Array.from(new Set(cases.map((c: any) => c.DistrictName || c.districtname).filter(Boolean)));
+  const stations = Array.from(new Set(cases.map((c: any) => c.StationName || c.stationname).filter(Boolean)));
+  const crimeGroups = Array.from(new Set(cases.map((c: any) => c.CrimeGroupName || c.crimegroupname).filter(Boolean)));
+  const ios = Array.from(new Set(cases.map((c: any) => c.IOName || c.ioname).filter(Boolean)));
+
+  const mainDist = (districts[0] as string) || profileData.attributes?.District || profileData.district || "Jurisdictional District";
+  const mainStation = (stations[0] as string) || profileData.attributes?.Station || profileData.station || "Local Police Station";
+  const mainIO = (ios[0] as string) || "Assigned Investigating Officer";
+  const label = profileData.label || "Subject Entity";
+  const entityType = profileData.entity_type || "accused";
+
+  // 1. Recidivism & Threat Level Protocol
+  if (profileData.risk_level?.includes("CRITICAL") || cases.length >= 3) {
+    recs.push(
+      `**History-Sheet & Security Bond (Sec 110 CrPC):** Open History Sheet (HS-B Register) under KPM Sec 1205 across ${districts.length ? districts.join(", ") : mainDist} jurisdiction. File habitual offender security bond proceedings before the Special Executive Magistrate.`
+    );
+  } else if (profileData.risk_level?.includes("HIGH")) {
+    recs.push(
+      `**Surveillance & Night Beat Patrol (KPM Sec 1201):** Deploy targeted night beat patrols in ${mainStation} jurisdiction to monitor habitual movements of ${label}.`
+    );
+  } else {
+    recs.push(
+      `**CCTNS Real-Time Alert & Tracking:** Flag ${label} in CCTNS database for automated alert triggers across all station checkposts in ${mainDist}.`
+    );
+  }
+
+  // 2. Crime-Category Specific Operational Protocols
+  const crimeText = (crimeGroups.join(" ") + " " + cases.map((c: any) => c.BriefFacts || c.brieffacts || "").join(" ")).toLowerCase();
+
+  if (crimeText.includes("property") || crimeText.includes("theft") || crimeText.includes("burglary")) {
+    recs.push(
+      `**Stolen Property Receiver Inspection (Sec 411 IPC):** Direct ${mainIO} at ${mainStation} to conduct surprise search operations at local pawn shops and second-hand receivers in ${mainDist}. Requisition Fingerprint Bureau (FPB Madiwala) matching.`
+    );
+  }
+
+  if (crimeText.includes("fraud") || crimeText.includes("financial") || crimeText.includes("cheating") || entityType === "financial") {
+    recs.push(
+      `**Bank Account Freeze & Lien Order (Sec 102 CrPC):** Issue immediate Sec 102 CrPC notices to destination bank branches to freeze funds linked to ${label}. File escalation on National Cyber Crime Reporting Portal (1930 NCRP).`
+    );
+    recs.push(
+      `**Nodal Officer CDR & IP Log Requisition (Sec 91 CrPC):** Issue notices under Sec 91 CrPC to Telecom Nodal Officers for Call Detail Records (CDR) and IP login location logs.`
+    );
+  }
+
+  if (crimeText.includes("document") || crimeText.includes("forgery")) {
+    recs.push(
+      `**Forensic Examination & Sub-Registrar Notice (Sec 91 CrPC):** Send questioned documents to State Forensic Science Laboratory (SFSL) Madiwala for ink/handwriting analysis. Issue Sec 91 CrPC notices to Sub-Registrar office in ${mainDist} to freeze encumbrance titles.`
+    );
+  }
+
+  if (crimeText.includes("body") || crimeText.includes("murder") || crimeText.includes("assault")) {
+    recs.push(
+      `**Non-Bailable Warrant Execution & Witness Protection (Sec 70 CrPC / 195A IPC):** Issue and execute Non-Bailable Warrants (NBW) via Local Intelligence Unit (LIU) and implement witness protection protocols under Sec 195A IPC for victims in ${mainStation} cases.`
+    );
+  }
+
+  if (entityType === "location") {
+    recs.push(
+      `**Hotspot Police Patrol & CCTV Expansion:** Increase Crime Prevention Party (CPP) frequency at ${label} and install high-definition ANPR (Automatic Number Plate Recognition) cameras at key arterial junctions.`
+    );
+  }
+
+  if (districts.length > 1) {
+    recs.push(
+      `**Inter-District Joint Taskforce:** Form a dedicated joint investigation unit spanning ${districts.join(" & ")} districts under the direct supervision of Superintendent of Police (SP) / DCP ${districts[0]}.`
+    );
+  } else if (stations.length > 1) {
+    recs.push(
+      `**Inter-Station Crime Coordination:** Convene weekly crime coordination conference between Inspectors of ${stations.join(", ")} to cross-reference modus operandi.`
+    );
+  }
+
+  if (recs.length < 3) {
+    recs.push(
+      `**Evidentiary Charge-Sheet Audit:** Conduct expedited case review under supervision of Sub-Divisional Police Officer (SDPO) to ensure timely filing of Charge Sheet before the Jurisdictional Magistrate.`
+    );
+  }
+
+  return recs;
+}
+
 export default function NetworkGraphTab() {
+
   // --- Filter State ---
   const [district, setDistrict] = useState<string>("all");
   const [crimeType, setCrimeType] = useState<string>("all");
@@ -832,8 +920,28 @@ export default function NetworkGraphTab() {
                       <p className="text-slate-400 italic">No detailed case records available.</p>
                     )}
                   </div>
+
+                  {/* SECTION 3: LAW ENFORCEMENT ACTIONABLE RECOMMENDATIONS IN MODAL */}
+
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-amber-600" /> Case-Tailored Actionable Police Recommendations
+                    </h3>
+                    <div className="space-y-2 bg-amber-50/60 p-4 rounded-xl border border-amber-200">
+                      {(profileData.recommendations && profileData.recommendations.length > 0
+                        ? profileData.recommendations
+                        : generatePersonalizedRecommendations(profileData)
+                      ).map((rec: string, idx: number) => (
+                        <div key={idx} className="flex items-start gap-2 text-slate-800 leading-relaxed font-medium">
+                          <span className="font-bold text-amber-800 shrink-0 font-mono">{idx + 1}.</span>
+                          <div dangerouslySetInnerHTML={{ __html: rec.split("**").map((part, i) => i % 2 === 1 ? `<strong>${part}</strong>` : part).join("") }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </>
               ) : null}
+
             </div>
 
             {/* Modal Footer */}
@@ -849,6 +957,7 @@ export default function NetworkGraphTab() {
                     if (!profileData) return;
                     setPdfDownloading(true);
                     try {
+                      const recs = profileData.recommendations || generatePersonalizedRecommendations(profileData);
                       const markdown = [
                         "# GOVERNMENT OF KARNATAKA — STATE POLICE HEADQUARTERS",
                         "## CONFIDENTIAL // LAW ENFORCEMENT INTELLIGENCE USE ONLY",
@@ -868,20 +977,18 @@ export default function NetworkGraphTab() {
                         "",
                         "### SECTION 2: REGISTERED FIR INVESTIGATION RECORDS",
                         ...(profileData.cases || []).flatMap((c: any, idx: number) => [
-                          `#### Case ${idx + 1}: FIR No. ${c.CrimeNo || 'N/A'} (Case Master ID #${c.CaseMasterID})`,
-                          `- **Registration Date:** ${c.CrimeRegisteredDate || 'N/A'}`,
-                          `- **Jurisdiction:** ${c.DistrictName} District — ${c.StationName}`,
-                          `- **Statutory Offense Group:** ${c.CrimeGroupName || 'Penal Code Offense'}`,
-                          `- **Assigned Investigating Officer (IO):** ${c.IOName || 'Inspector Assigned'}`,
-                          `- **Brief Facts Narrative:** ${c.BriefFacts}`,
+                          `#### Case ${idx + 1}: FIR No. ${c.CrimeNo || c.crimeno || 'N/A'} (Case Master ID #${c.CaseMasterID || c.casemasterid})`,
+                          `- **Registration Date:** ${c.CrimeRegisteredDate || c.crimeregistereddate || 'N/A'}`,
+                          `- **Jurisdiction:** ${c.DistrictName || c.districtname || 'Karnataka'} District — ${c.StationName || c.stationname || 'Local PS'}`,
+                          `- **Statutory Offense Group:** ${c.CrimeGroupName || c.crimegroupname || 'Penal Code Offense'}`,
+                          `- **Assigned Investigating Officer (IO):** ${c.IOName || c.ioname || 'Inspector Assigned'}`,
+                          `- **Brief Facts Narrative:** ${c.BriefFacts || c.brieffacts}`,
                           ""
                         ]),
                         "---",
                         "",
                         "### SECTION 3: LAW ENFORCEMENT ACTIONABLE RECOMMENDATIONS",
-                        "1. **Inter-Jurisdictional Tracking:** Maintain active intelligence monitoring across linked station jurisdictions.",
-                        "2. **Financial Proceeds Audit:** Audit linked bank accounts and transaction history for recovery of crime proceeds.",
-                        "3. **CCTNS Automated Alerts:** Flag offender master ID in state CCTNS database for real-time tracking.",
+                        ...recs.map((r: string, idx: number) => `${idx + 1}. ${r}`),
                         "",
                         "---",
                         "",
@@ -904,7 +1011,6 @@ export default function NetworkGraphTab() {
                     } finally {
                       setPdfDownloading(false);
                     }
-
                   }}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 >
@@ -922,7 +1028,6 @@ export default function NetworkGraphTab() {
                 </button>
               </div>
 
-
             </div>
 
           </div>
@@ -931,4 +1036,5 @@ export default function NetworkGraphTab() {
     </div>
   );
 }
+
 
