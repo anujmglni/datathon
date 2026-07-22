@@ -5,7 +5,10 @@ and logs all executions to the immutable AuditLog table.
 """
 
 import time
+import logging
 from database import execute_query
+
+logger = logging.getLogger(__name__)
 
 def apply_governance_rules(sql_query: str, user_role: str) -> tuple[str, bool]:
     """
@@ -41,4 +44,5 @@ def log_audit_trail(user_id: str, user_role: str, query_string: str, sql_execute
     try:
         execute_query(sql, (user_id or "user_anon", user_role or "Analyst", query_string, sql_executed, rows_touched, timestamp))
     except Exception as e:
-        print(f"⚠️ Audit logging fallback: {e}")
+        logger.debug(f"Audit logging fallback: {e}")
+
