@@ -520,155 +520,153 @@ def get_entity_dossier_profile(entity_id: str, entity_type: str = "accused") -> 
         entity_name = f"Entity ({entity_id})"
         attributes = {}
 
+        if entity_type == "accused":
+            # Fetch accused details
+            acc_info = execute_query("SELECT * FROM accused WHERE accusedmasterid = %s OR personid = %s LIMIT 1", (raw_id if raw_id.isdigit() else 0, str(raw_id)))
+            if acc_info:
+                r = acc_info[0]
+                entity_name = r.get("accusedname") or f"Accused #{r.get('accusedmasterid')}"
+                attributes = {
+                    "AccusedMasterID": r.get("accusedmasterid"),
+                    "PersonID": r.get("personid"),
+                    "Age": r.get("ageyear"),
+                    "Gender": "Male" if r.get("genderid") == 1 else ("Female" if r.get("genderid") == 2 else "Other")
+                }
 
-    if entity_type == "accused":
-        # Fetch accused details
-        acc_info = execute_query("SELECT * FROM accused WHERE accusedmasterid = %s OR personid = %s LIMIT 1", (raw_id if raw_id.isdigit() else 0, str(raw_id)))
-        if acc_info:
-            r = acc_info[0]
-            entity_name = r.get("accusedname") or f"Accused #{r.get('accusedmasterid')}"
-            attributes = {
-                "AccusedMasterID": r.get("accusedmasterid"),
-                "PersonID": r.get("personid"),
-                "Age": r.get("ageyear"),
-                "Gender": "Male" if r.get("genderid") == 1 else ("Female" if r.get("genderid") == 2 else "Other")
-            }
+            # Fetch all linked cases
+            cases_sql = """
+                SELECT 
+                    c.casemasterid AS CaseMasterID,
+                    c.crimeno AS CrimeNo,
+                    c.crimeregistereddate AS CrimeRegisteredDate,
+                    c.brieffacts AS BriefFacts,
+                    d.districtname AS DistrictName,
+                    u.unitname AS StationName,
+                    ch.crimegroupname AS CrimeGroupName,
+                    e.firstname AS IOName
+                FROM accused a
+                JOIN casemaster c ON a.casemasterid = c.casemasterid
+                LEFT JOIN unit u ON c.policestationid = u.unitid
+                LEFT JOIN district d ON u.districtid = d.districtid
+                LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
+                LEFT JOIN employee e ON c.policepersonid = e.employeeid
+                WHERE a.accusedmasterid = %s OR a.personid = %s
+                ORDER BY c.casemasterid DESC;
+            """
+            cases = execute_query(cases_sql, (raw_id if raw_id.isdigit() else 0, str(raw_id)))
 
-        # Fetch all linked cases
-        cases_sql = """
-            SELECT 
-                c.casemasterid AS CaseMasterID,
-                c.crimeno AS CrimeNo,
-                c.crimeregistereddate AS CrimeRegisteredDate,
-                c.brieffacts AS BriefFacts,
-                d.districtname AS DistrictName,
-                u.unitname AS StationName,
-                ch.crimegroupname AS CrimeGroupName,
-                e.firstname AS IOName
-            FROM accused a
-            JOIN casemaster c ON a.casemasterid = c.casemasterid
-            LEFT JOIN unit u ON c.policestationid = u.unitid
-            LEFT JOIN district d ON u.districtid = d.districtid
-            LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
-            LEFT JOIN employee e ON c.policepersonid = e.employeeid
-            WHERE a.accusedmasterid = %s OR a.personid = %s
-            ORDER BY c.casemasterid DESC;
-        """
-        cases = execute_query(cases_sql, (raw_id if raw_id.isdigit() else 0, str(raw_id)))
+        elif entity_type == "victim":
+            vic_info = execute_query("SELECT * FROM victim WHERE victimmasterid = %s LIMIT 1", (raw_id if raw_id.isdigit() else 0,))
+            if vic_info:
+                r = vic_info[0]
+                entity_name = r.get("victimname") or f"Victim #{r.get('victimmasterid')}"
+                attributes = {
+                    "VictimMasterID": r.get("victimmasterid"),
+                    "Age": r.get("ageyear"),
+                    "Gender": "Male" if r.get("genderid") == 1 else ("Female" if r.get("genderid") == 2 else "Other")
+                }
 
-    elif entity_type == "victim":
-        vic_info = execute_query("SELECT * FROM victim WHERE victimmasterid = %s LIMIT 1", (raw_id if raw_id.isdigit() else 0,))
-        if vic_info:
-            r = vic_info[0]
-            entity_name = r.get("victimname") or f"Victim #{r.get('victimmasterid')}"
-            attributes = {
-                "VictimMasterID": r.get("victimmasterid"),
-                "Age": r.get("ageyear"),
-                "Gender": "Male" if r.get("genderid") == 1 else ("Female" if r.get("genderid") == 2 else "Other")
-            }
+            cases_sql = """
+                SELECT 
+                    c.casemasterid AS CaseMasterID,
+                    c.crimeno AS CrimeNo,
+                    c.crimeregistereddate AS CrimeRegisteredDate,
+                    c.brieffacts AS BriefFacts,
+                    d.districtname AS DistrictName,
+                    u.unitname AS StationName,
+                    ch.crimegroupname AS CrimeGroupName,
+                    e.firstname AS IOName
+                FROM victim v
+                JOIN casemaster c ON v.casemasterid = c.casemasterid
+                LEFT JOIN unit u ON c.policestationid = u.unitid
+                LEFT JOIN district d ON u.districtid = d.districtid
+                LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
+                LEFT JOIN employee e ON c.policepersonid = e.employeeid
+                WHERE v.victimmasterid = %s
+                ORDER BY c.casemasterid DESC;
+            """
+            cases = execute_query(cases_sql, (raw_id if raw_id.isdigit() else 0,))
 
-        cases_sql = """
-            SELECT 
-                c.casemasterid AS CaseMasterID,
-                c.crimeno AS CrimeNo,
-                c.crimeregistereddate AS CrimeRegisteredDate,
-                c.brieffacts AS BriefFacts,
-                d.districtname AS DistrictName,
-                u.unitname AS StationName,
-                ch.crimegroupname AS CrimeGroupName,
-                e.firstname AS IOName
-            FROM victim v
-            JOIN casemaster c ON v.casemasterid = c.casemasterid
-            LEFT JOIN unit u ON c.policestationid = u.unitid
-            LEFT JOIN district d ON u.districtid = d.districtid
-            LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
-            LEFT JOIN employee e ON c.policepersonid = e.employeeid
-            WHERE v.victimmasterid = %s
-            ORDER BY c.casemasterid DESC;
-        """
-        cases = execute_query(cases_sql, (raw_id if raw_id.isdigit() else 0,))
+        elif entity_type == "financial":
+            entity_name = f"Account *{raw_id}"
+            attributes = {"BankAccountLast4": raw_id}
 
-    elif entity_type == "financial":
-        entity_name = f"Account *{raw_id}"
-        attributes = {"BankAccountLast4": raw_id}
+            cases_sql = """
+                SELECT 
+                    c.casemasterid AS CaseMasterID,
+                    c.crimeno AS CrimeNo,
+                    c.crimeregistereddate AS CrimeRegisteredDate,
+                    c.brieffacts AS BriefFacts,
+                    d.districtname AS DistrictName,
+                    u.unitname AS StationName,
+                    ch.crimegroupname AS CrimeGroupName,
+                    e.firstname AS IOName,
+                    ft.fraudtype AS FraudType,
+                    ft.amountlostinr AS AmountLostINR
+                FROM financialtransaction ft
+                JOIN casemaster c ON ft.casemasterid = c.casemasterid
+                LEFT JOIN unit u ON c.policestationid = u.unitid
+                LEFT JOIN district d ON u.districtid = d.districtid
+                LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
+                LEFT JOIN employee e ON c.policepersonid = e.employeeid
+                WHERE ft.bankaccountlast4 = %s
+                ORDER BY c.casemasterid DESC;
+            """
+            cases = execute_query(cases_sql, (int(raw_id) if raw_id.isdigit() else 0,))
 
-        cases_sql = """
-            SELECT 
-                c.casemasterid AS CaseMasterID,
-                c.crimeno AS CrimeNo,
-                c.crimeregistereddate AS CrimeRegisteredDate,
-                c.brieffacts AS BriefFacts,
-                d.districtname AS DistrictName,
-                u.unitname AS StationName,
-                ch.crimegroupname AS CrimeGroupName,
-                e.firstname AS IOName,
-                ft.fraudtype AS FraudType,
-                ft.amountlostinr AS AmountLostINR
-            FROM financialtransaction ft
-            JOIN casemaster c ON ft.casemasterid = c.casemasterid
-            LEFT JOIN unit u ON c.policestationid = u.unitid
-            LEFT JOIN district d ON u.districtid = d.districtid
-            LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
-            LEFT JOIN employee e ON c.policepersonid = e.employeeid
-            WHERE ft.bankaccountlast4 = %s
-            ORDER BY c.casemasterid DESC;
-        """
-        cases = execute_query(cases_sql, (int(raw_id) if raw_id.isdigit() else 0,))
+        elif entity_type == "location":
+            unit_info = execute_query("SELECT * FROM unit WHERE unitid = %s LIMIT 1", (raw_id if raw_id.isdigit() else 0,))
+            if unit_info:
+                r = unit_info[0]
+                entity_name = r.get("unitname") or f"Station #{r.get('unitid')}"
+                attributes = {"UnitID": r.get("unitid")}
 
+            cases_sql = """
+                SELECT 
+                    c.casemasterid AS CaseMasterID,
+                    c.crimeno AS CrimeNo,
+                    c.crimeregistereddate AS CrimeRegisteredDate,
+                    c.brieffacts AS BriefFacts,
+                    d.districtname AS DistrictName,
+                    u.unitname AS StationName,
+                    ch.crimegroupname AS CrimeGroupName,
+                    e.firstname AS IOName
+                FROM casemaster c
+                LEFT JOIN unit u ON c.policestationid = u.unitid
+                LEFT JOIN district d ON u.districtid = d.districtid
+                LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
+                LEFT JOIN employee e ON c.policepersonid = e.employeeid
+                WHERE c.policestationid = %s
+                ORDER BY c.casemasterid DESC
+                LIMIT 50;
+            """
+            cases = execute_query(cases_sql, (raw_id if raw_id.isdigit() else 0,))
 
-    elif entity_type == "location":
-        unit_info = execute_query("SELECT * FROM unit WHERE unitid = %s LIMIT 1", (raw_id if raw_id.isdigit() else 0,))
-        if unit_info:
-            r = unit_info[0]
-            entity_name = r.get("unitname") or f"Station #{r.get('unitid')}"
-            attributes = {"UnitID": r.get("unitid")}
+        # Standardize dictionary keys for frontend consumption
+        for c in cases:
+            c["CaseMasterID"] = c.get("CaseMasterID") or c.get("casemasterid")
+            c["CrimeNo"] = c.get("CrimeNo") or c.get("crimeno")
+            c["CrimeRegisteredDate"] = c.get("CrimeRegisteredDate") or c.get("crimeregistereddate")
+            c["BriefFacts"] = c.get("BriefFacts") or c.get("brieffacts")
+            c["DistrictName"] = c.get("DistrictName") or c.get("districtname")
+            c["StationName"] = c.get("StationName") or c.get("stationname")
+            c["CrimeGroupName"] = c.get("CrimeGroupName") or c.get("crimegroupname")
+            c["IOName"] = c.get("IOName") or c.get("ioname") or "Inspector Assigned"
 
-        cases_sql = """
-            SELECT 
-                c.casemasterid AS CaseMasterID,
-                c.crimeno AS CrimeNo,
-                c.crimeregistereddate AS CrimeRegisteredDate,
-                c.brieffacts AS BriefFacts,
-                d.districtname AS DistrictName,
-                u.unitname AS StationName,
-                ch.crimegroupname AS CrimeGroupName,
-                e.firstname AS IOName
-            FROM casemaster c
-            LEFT JOIN unit u ON c.policestationid = u.unitid
-            LEFT JOIN district d ON u.districtid = d.districtid
-            LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
-            LEFT JOIN employee e ON c.policepersonid = e.employeeid
-            WHERE c.policestationid = %s
-            ORDER BY c.casemasterid DESC
-            LIMIT 50;
-        """
-        cases = execute_query(cases_sql, (raw_id if raw_id.isdigit() else 0,))
+        res_payload = {
+            "status": "success",
+            "entity_id": entity_id,
+            "entity_type": entity_type,
+            "label": entity_name,
+            "risk_level": "CRITICAL (HIGH RECIDIVISM)" if len(cases) >= 3 else ("HIGH RISK / RECIDIVIST" if len(cases) >= 2 else "STANDARD RECORD"),
+            "total_cases": len(cases),
+            "attributes": attributes,
+            "cases": cases
+        }
 
-    # Standardize dictionary keys for frontend consumption
-    for c in cases:
-        c["CaseMasterID"] = c.get("CaseMasterID") or c.get("casemasterid")
-        c["CrimeNo"] = c.get("CrimeNo") or c.get("crimeno")
-        c["CrimeRegisteredDate"] = c.get("CrimeRegisteredDate") or c.get("crimeregistereddate")
-        c["BriefFacts"] = c.get("BriefFacts") or c.get("brieffacts")
-        c["DistrictName"] = c.get("DistrictName") or c.get("districtname")
-        c["StationName"] = c.get("StationName") or c.get("stationname")
-        c["CrimeGroupName"] = c.get("CrimeGroupName") or c.get("crimegroupname")
-        c["IOName"] = c.get("IOName") or c.get("ioname") or "Inspector Assigned"
+        res_payload["recommendations"] = generate_personalized_recommendations(res_payload)
+        return res_payload
 
-
-    res_payload = {
-        "status": "success",
-        "entity_id": entity_id,
-        "entity_type": entity_type,
-        "label": entity_name,
-        "risk_level": "CRITICAL (HIGH RECIDIVISM)" if len(cases) >= 3 else ("HIGH RISK / RECIDIVIST" if len(cases) >= 2 else "STANDARD RECORD"),
-        "total_cases": len(cases),
-        "attributes": attributes,
-        "cases": cases
-    }
-
-    res_payload["recommendations"] = generate_personalized_recommendations(res_payload)
-    return res_payload
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -683,6 +681,7 @@ def get_entity_dossier_profile(entity_id: str, entity_type: str = "accused") -> 
             "cases": [],
             "recommendations": ["**CCTNS Real-Time Alert & Tracking:** Flag subject in state CCTNS database for monitoring."]
         }
+
 
 
 
