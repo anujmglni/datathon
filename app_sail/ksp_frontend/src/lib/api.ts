@@ -1,4 +1,5 @@
-import { QueryResponse, NetworkGraphData, NetworkResponsePayload, GraphSummaryResponse, ZiaOcrResponse } from "./types";
+import { QueryResponse, NetworkGraphData, NetworkResponsePayload, GraphSummaryResponse, ZiaOcrResponse, AnalyticsResponsePayload } from "./types";
+
 
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
@@ -116,6 +117,28 @@ export async function fetchEntityProfile(entityId: string, entityType: string): 
     };
   }
 }
+
+export async function fetchAnalyticsSummary(
+
+  district: string = "all",
+  crimeType: string = "all",
+  dateRange: string = "365"
+): Promise<AnalyticsResponsePayload | null> {
+  try {
+    const params = new URLSearchParams({
+      district,
+      crime_type: crimeType,
+      date_range: dateRange
+    });
+    const res = await fetch(`${API_BASE}/api/analytics/summary?${params.toString()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    console.error("fetchAnalyticsSummary error:", e);
+    return null;
+  }
+}
+
 
 
 

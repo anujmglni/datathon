@@ -133,6 +133,29 @@ export interface ZiaOcrResponse {
   zia_confidence_score: number;
 }
 
+export interface AnalyticsChartBlock<T = any> {
+  data: T[];
+  description: string;
+  how_to_read?: string;
+}
+
+export interface AnalyticsResponsePayload {
+  status: string;
+  filters_applied: {
+    district: string;
+    crime_type: string;
+    date_range: string;
+  };
+  heatmap_district_month: AnalyticsChartBlock;
+  heatmap_crime_timeofday: AnalyticsChartBlock;
+  line_crime_trends: AnalyticsChartBlock;
+  bar_top_offenses: AnalyticsChartBlock;
+  choropleth_district_map: AnalyticsChartBlock;
+  donut_case_status: AnalyticsChartBlock;
+  financial_crime_summary: AnalyticsChartBlock;
+  sociological_correlation: AnalyticsChartBlock;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -140,3 +163,4 @@ export interface ChatMessage {
   result?: QueryResponse;
   timestamp: Date;
 }
+

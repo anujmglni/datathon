@@ -18,7 +18,8 @@ const NetworkGraphTab = dynamic(() => import("@/components/NetworkGraphTab"), {
 });
 
 import ReportCompilerTab from "@/components/ReportCompilerTab";
-import ZiaOcrTab from "@/components/ZiaOcrTab";
+import AnalyticsTab from "@/components/AnalyticsTab";
+
 
 import { sendQuery, checkBackendHealth, generatePdfReport, exportDocxReport } from "@/lib/api";
 import { ChatMessage } from "@/lib/types";
@@ -270,11 +271,12 @@ export default function Home() {
           {/* TAB 2: CRIMINAL NETWORK GRAPH */}
           {activeTab === "graph" && <NetworkGraphTab />}
 
-          {/* TAB 3: PDF REPORT COMPILER */}
+          {/* TAB 3: CRIME & TREND ANALYTICS */}
+          {activeTab === "analytics" && <AnalyticsTab />}
+
+          {/* TAB 4: PDF REPORT COMPILER */}
           {activeTab === "pdf" && <ReportCompilerTab />}
 
-          {/* TAB 4: ZIA AI OCR */}
-          {activeTab === "ocr" && <ZiaOcrTab />}
 
         </main>
       </div>

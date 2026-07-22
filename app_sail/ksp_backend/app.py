@@ -273,6 +273,25 @@ def get_network_profile(
     return get_entity_dossier_profile(entity_id=entity_id, entity_type=entity_type)
 
 
+@app.get("/api/analytics/summary")
+def get_analytics_summary(
+    district: str = Query("all"),
+    crime_type: str = Query("all"),
+    date_range: str = Query("365")
+):
+    """
+    Returns pre-aggregated dataset for all 8 analytics charts along with
+    dynamically generated plain-language Explainable AI descriptions.
+    """
+    from services.analytics_service import fetch_analytics_summary
+    return fetch_analytics_summary(
+        district=district,
+        crime_type=crime_type,
+        date_range=date_range
+    )
+
+
+
 
 @app.post("/api/ingest/run")
 

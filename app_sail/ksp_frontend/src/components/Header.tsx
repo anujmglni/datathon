@@ -20,9 +20,10 @@ export default function Header({
   const tabs = [
     { id: "chat", label: "💬 Chat Intelligence" },
     { id: "graph", label: "🕸️ Criminal Network Graph" },
-    { id: "pdf", label: "📄 PDF/DOCX Reports" },
-    { id: "ocr", label: "📷 Zia AI Document OCR" },
+    { id: "analytics", label: "📊 Crime & Trend Analytics" },
+    { id: "pdf", label: "📄 PDF Reports" },
   ];
+
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-slate-200 px-6 py-3 shadow-xs">
