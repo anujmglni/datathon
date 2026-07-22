@@ -906,7 +906,7 @@ export default function NetworkGraphTab() {
                                   </span>
                                 </td>
                                 <td className="p-3 font-semibold text-slate-700">
-                                  {c.IOName || "Inspector Assigned"}
+                                   {c.IOName || c.ioname || "Inspector Assigned"}
                                 </td>
                                 <td className="p-3 max-w-xs leading-relaxed text-[11px] text-slate-600">
                                   {c.BriefFacts}
