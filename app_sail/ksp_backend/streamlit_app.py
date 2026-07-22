@@ -88,9 +88,27 @@ def query_backend(query, session_id, role):
         return {"error": str(e)}
 
 
-def build_graph():
+def build_graph(district=None, crime_head_id=None, min_connections=1):
     try:
-        r = requests.post(f"{API_BASE}/api/graph/rebuild", timeout=30)
+        params = {"min_connections": min_connections}
+        if district:
+            params["district"] = district
+        if crime_head_id:
+            params["crime_head_id"] = crime_head_id
+        r = requests.post(f"{API_BASE}/api/graph/rebuild", params=params, timeout=60)
+        return r.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def fetch_graph_summary(district=None, crime_head_id=None, min_connections=1):
+    try:
+        params = {"min_connections": min_connections}
+        if district:
+            params["district"] = district
+        if crime_head_id:
+            params["crime_head_id"] = crime_head_id
+        r = requests.post(f"{API_BASE}/api/graph/summary", params=params, timeout=60)
         return r.json()
     except Exception as e:
         return {"error": str(e)}
@@ -120,91 +138,150 @@ def format_answer_naturally(result):
 
 
 def render_network_graph(graph_data):
-    """Render an interactive network graph using plotly."""
+    """Render an interactive multi-relational network graph with community coloring."""
     import plotly.graph_objects as go
     import networkx as nx
-    import math
 
     nodes = graph_data.get("nodes", [])
     edges = graph_data.get("edges", [])
 
     if not nodes:
-        st.warning("No criminal network data found.")
+        st.warning("⚠️ No criminal network data found matching current filter criteria.")
         return
 
+    # Build NetworkX graph for spring layout positioning
     G = nx.Graph()
     for n in nodes:
-        G.add_node(n["id"], label=n.get("label", f"#{n['id']}"),
-                   centrality=n.get("degree_centrality", 0))
+        G.add_node(n["id"], **n)
     for e in edges:
-        G.add_edge(e["source"], e["target"], weight=e.get("weight", 1))
+        G.add_edge(e["source"], e["target"], weight=e.get("weight", 1), relation=e.get("relation", "shared_case"))
 
-    # Layout
-    pos = nx.spring_layout(G, k=2.5, iterations=60, seed=42)
+    # Compute 2D spring layout positioning
+    pos = nx.spring_layout(G, k=2.0, iterations=70, seed=42)
 
-    # Edge traces
-    edge_x, edge_y = [], []
-    for u, v in G.edges():
-        x0, y0 = pos[u]
-        x1, y1 = pos[v]
-        edge_x += [x0, x1, None]
-        edge_y += [y0, y1, None]
+    # ── Edge Traces (Categorized by Relation Type) ─────────────────────
+    edge_x_case, edge_y_case = [], []
+    edge_x_bank, edge_y_bank = [], []
 
-    edge_trace = go.Scatter(
-        x=edge_x, y=edge_y, mode='lines',
-        line=dict(width=0.8, color='#475569'),
-        hoverinfo='none'
-    )
+    for u, v, data in G.edges(data=True):
+        if u in pos and v in pos:
+            x0, y0 = pos[u]
+            x1, y1 = pos[v]
+            rel = data.get("relation", "shared_case")
+            if "bank" in rel:
+                edge_x_bank += [x0, x1, None]
+                edge_y_bank += [y0, y1, None]
+            else:
+                edge_x_case += [x0, x1, None]
+                edge_y_case += [y0, y1, None]
 
-    # Node traces
+    traces = []
+    if edge_x_case:
+        traces.append(go.Scatter(
+            x=edge_x_case, y=edge_y_case, mode='lines',
+            line=dict(width=1.0, color='#475569'),
+            name='Shared Case Link', hoverinfo='none'
+        ))
+    if edge_x_bank:
+        traces.append(go.Scatter(
+            x=edge_x_bank, y=edge_y_bank, mode='lines',
+            line=dict(width=2.0, color='#ef4444', dash='dot'),
+            name='Shared Bank Account Link', hoverinfo='none'
+        ))
+
+    # ── Node Traces (Colored by Community Cluster) ──────────────────────
+    COMMUNITY_COLORS = [
+        '#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6',
+        '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'
+    ]
+
     node_x = [pos[n][0] for n in G.nodes()]
     node_y = [pos[n][1] for n in G.nodes()]
-    node_text = [G.nodes[n].get("label", str(n)) for n in G.nodes()]
-    node_centrality = [G.nodes[n].get("centrality", 0) for n in G.nodes()]
-    node_size = [max(8, c * 120) for c in node_centrality]
-    node_color = node_centrality
+    node_labels = [G.nodes[n].get("name", f"Accused #{n}") for n in G.nodes()]
+    communities = [G.nodes[n].get("community_id", 0) for n in G.nodes()]
+    deg_cent = [G.nodes[n].get("degree_centrality", 0) for n in G.nodes()]
+
+    # Color mapping per community
+    colors = [COMMUNITY_COLORS[c % len(COMMUNITY_COLORS)] for c in communities]
+    sizes = [max(12, min(45, int(c * 150) + 14)) for c in deg_cent]
+
+    # Rich hover text per node
+    hover_texts = []
+    for n in G.nodes():
+        meta = G.nodes[n]
+        name = meta.get("name", "Unknown")
+        age = meta.get("age", "N/A")
+        gender = meta.get("gender", "N/A")
+        cases_cnt = meta.get("total_cases", 0)
+        districts = ", ".join(meta.get("districts", [])) or "N/A"
+        crimes = ", ".join(meta.get("crime_types", [])) or "N/A"
+        fraud = meta.get("fraud_total", 0.0)
+        comm = meta.get("community_id", 0)
+        deg = meta.get("degree_centrality", 0.0)
+        bet = meta.get("betweenness_centrality", 0.0)
+
+        hover_texts.append(
+            f"<b>👤 Suspect: {name}</b> (ID #{n})<br>"
+            f"<b>Age/Gender:</b> {age} yrs / {gender}<br>"
+            f"<b>Total Cases:</b> {cases_cnt} | <b>Cluster:</b> Gang Group #{comm + 1}<br>"
+            f"<b>Districts:</b> {districts}<br>"
+            f"<b>Crime Types:</b> {crimes}<br>"
+            f"<b>Linked Fraud:</b> ₹{fraud:,.2f}<br>"
+            f"<b>Degree Centrality:</b> {deg:.4f} | <b>Betweenness:</b> {bet:.4f}"
+        )
 
     node_trace = go.Scatter(
         x=node_x, y=node_y, mode='markers+text',
         marker=dict(
-            size=node_size, color=node_color,
-            colorscale='YlOrRd', showscale=True,
-            colorbar=dict(title="Centrality", thickness=15),
-            line=dict(width=1, color='#1e293b')
+            size=sizes,
+            color=colors,
+            line=dict(width=1.5, color='#ffffff')
         ),
-        text=node_text,
+        text=[f"{lbl}" for lbl in node_labels],
         textposition="top center",
-        textfont=dict(size=8, color="#94a3b8"),
-        hovertext=[f"{t}<br>Centrality: {c:.4f}" for t, c in zip(node_text, node_centrality)],
-        hoverinfo='text'
+        textfont=dict(size=9, color="#cbd5e1"),
+        hovertext=hover_texts,
+        hoverinfo='text',
+        name='Suspect Node'
     )
+    traces.append(node_trace)
 
     fig = go.Figure(
-        data=[edge_trace, node_trace],
+        data=traces,
         layout=go.Layout(
             title=dict(
-                text=f"Criminal Network Graph — {len(nodes)} Suspects, {len(edges)} Connections",
-                font=dict(size=16, color="#e2e8f0")
+                text=f"🕸️ Criminal Network Graph — {len(nodes)} Suspects | {len(edges)} Links",
+                font=dict(size=16, color="#f8fafc")
             ),
-            showlegend=False,
+            showlegend=True,
+            legend=dict(font=dict(color="#94a3b8"), orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
             paper_bgcolor='#0f172a',
             plot_bgcolor='#0f172a',
             xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
             yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            margin=dict(l=20, r=20, t=50, b=20),
-            height=550,
+            margin=dict(l=20, r=20, t=60, b=20),
+            height=580,
         )
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # Top suspects by centrality
-    top = sorted(nodes, key=lambda x: x.get("degree_centrality", 0), reverse=True)[:10]
-    if top:
-        st.markdown("##### 🔴 Top 10 Most Connected Suspects")
-        df = pd.DataFrame(top)
-        df.columns = [c.replace("_", " ").title() for c in df.columns]
-        st.dataframe(df, use_container_width=True, hide_index=True)
+    # ── Detailed Suspect Table ──────────────────────────────────────────
+    st.markdown("##### 🔴 High-Risk Suspect Intelligence Table")
+    df_nodes = pd.DataFrame(nodes)
+    if not df_nodes.empty:
+        # Reorder and format columns
+        cols = ["name", "age", "gender", "total_cases", "community_id", "fraud_total", "degree_centrality", "betweenness_centrality", "districts", "crime_types"]
+        cols_present = [c for c in cols if c in df_nodes.columns]
+        df_display = df_nodes[cols_present].copy()
+
+        df_display["community_id"] = df_display["community_id"].apply(lambda c: f"Cluster #{c + 1}")
+        df_display["fraud_total"] = df_display["fraud_total"].apply(lambda f: f"₹{f:,.2f}" if f else "₹0.00")
+        df_display["districts"] = df_display["districts"].apply(lambda d: ", ".join(d) if isinstance(d, list) else str(d))
+        df_display["crime_types"] = df_display["crime_types"].apply(lambda c: ", ".join(c) if isinstance(c, list) else str(c))
+
+        df_display.columns = [c.replace("_", " ").title() for c in df_display.columns]
+        st.dataframe(df_display, use_container_width=True, hide_index=True)
 
 
 # ── Sidebar ─────────────────────────────────────────────────────────────
@@ -294,6 +371,12 @@ with tab_chat:
                 formatted = format_answer_naturally(result)
                 st.markdown(formatted)
 
+                # Provider badge
+                xai = result.get("explainable_ai", {})
+                intent_name = result.get("intent", "UNKNOWN")
+                elapsed_sec = xai.get("execution_time_seconds", 0.0)
+                st.caption(f"⚡ **Intelligence Engine:** Groq AI (`llama-3.3-70b-versatile`) | **Intent:** `{intent_name}` | **Latency:** `{elapsed_sec:.3f}s`")
+
                 # Data table
                 data = result.get("data", [])
                 df = None
@@ -307,7 +390,6 @@ with tab_chat:
                         st.dataframe(df, use_container_width=True, hide_index=True)
 
                 # SQL
-                xai = result.get("explainable_ai", {})
                 sql = xai.get("sql_executed", "")
                 if sql:
                     with st.expander("⚡ Executed SQL & Provenance"):
@@ -318,45 +400,87 @@ with tab_chat:
                     "content": formatted,
                     "dataframe": df,
                     "sql": sql,
+                    "meta": f"⚡ Groq AI (`llama-3.3-70b-versatile`) | Intent: `{intent_name}`"
                 })
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# TAB 2 — CRIMINAL NETWORK GRAPH (VISUAL)
+# TAB 2 — CRIMINAL NETWORK GRAPH (VISUAL & INTELLIGENCE)
 # ═══════════════════════════════════════════════════════════════════════
 with tab_graph:
-    st.markdown("### 🕸️ Criminal Network Visualization")
-    st.caption("Builds a co-accused association graph from all cases. Nodes = suspects, edges = shared cases.")
+    st.markdown("### 🕸️ Criminal Network Analysis & Gang Cluster Intelligence")
+    st.caption("Multi-relation association graph connecting suspects via shared case FIRs, financial transaction bank accounts, and police jurisdictions.")
 
-    col1, col2 = st.columns([1, 4])
-    with col1:
-        if st.button("🔄 Build Network Graph", type="primary", use_container_width=True):
-            st.session_state["build_graph"] = True
+    # ── Interactive Filter Controls ─────────────────────────────────────
+    st.markdown("##### 🔍 Network Scope & Filters")
+    fcol1, fcol2, fcol3, fcol4 = st.columns([2, 2, 2, 1.5])
 
-    if st.session_state.get("build_graph"):
-        with st.spinner("🧠 Querying accused records and building network graph..."):
-            result = build_graph()
+    with fcol1:
+        dist_filter = st.selectbox(
+            "📍 Scope by District",
+            ["All Districts"] + [
+                "Bengaluru City", "Bengaluru District", "Mysuru City", "Mysuru District",
+                "Mangaluru City", "Belagavi City", "Dharwad", "Kalaburgi City", "Ballari",
+                "Bagalkot", "Bidar", "Vijayapura", "Tumakuru", "Udupi", "Kolar"
+            ],
+            key="graph_dist_filter"
+        )
+    with fcol2:
+        crime_filter = st.selectbox(
+            "⚖️ Crime Head Type",
+            ["All Crime Types", "Property Offenses (1)", "Misc IPC Crimes (2)", "Body Offenses (3)", "Public Tranquility (4)", "Document Fraud (5)"],
+            key="graph_crime_filter"
+        )
+    with fcol3:
+        min_conn = st.slider("🔗 Min Connections Threshold", min_value=1, max_value=5, value=1, key="graph_min_conn")
 
-        if "error" in result:
-            st.error(f"❌ {result['error']}")
-        else:
-            graph_data = result.get("graph", result)
-            total_nodes = graph_data.get("total_nodes", 0)
-            total_edges = graph_data.get("total_edges", 0)
+    with fcol4:
+        st.write("")
+        st.write("")
+        build_clicked = st.button("🔄 Analyze Graph", type="primary", use_container_width=True)
 
-            # Metrics
-            c1, c2, c3 = st.columns(3)
-            c1.metric("🔴 Total Suspects", total_nodes)
-            c2.metric("🔗 Total Connections", total_edges)
-            avg_degree = round(2 * total_edges / total_nodes, 2) if total_nodes > 0 else 0
-            c3.metric("📊 Avg Connections/Suspect", avg_degree)
+    if build_clicked or "last_graph_data" not in st.session_state:
+        target_dist = None if dist_filter == "All Districts" else dist_filter
+        target_head = None
+        if "(" in crime_filter:
+            try:
+                target_head = int(crime_filter.split("(")[1].replace(")", ""))
+            except ValueError:
+                target_head = None
 
+        with st.spinner("🧠 Querying PostgreSQL accused records, financial transactions, and running network analysis..."):
+            g_res = build_graph(district=target_dist, crime_head_id=target_head, min_connections=min_conn)
+            sum_res = fetch_graph_summary(district=target_dist, crime_head_id=target_head, min_connections=min_conn)
+
+        st.session_state["last_graph_data"] = g_res.get("graph", g_res)
+        st.session_state["last_graph_summary"] = sum_res.get("summary", "")
+
+    graph_data = st.session_state.get("last_graph_data", {})
+    summary_text = st.session_state.get("last_graph_summary", "")
+
+    if graph_data:
+        total_nodes = graph_data.get("total_nodes", 0)
+        total_edges = graph_data.get("total_edges", 0)
+        total_comms = graph_data.get("total_communities", 0)
+        total_fraud = graph_data.get("total_fraud_amount", 0)
+
+        # ── Key Summary Metric Cards ─────────────────────────────────────
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("🔴 Suspects Analyzed", total_nodes)
+        m2.metric("🔗 Multi-Relational Links", total_edges)
+        m3.metric("🧩 Crime Clusters / Gangs", total_comms)
+        m4.metric("💰 Linked Fraud Amount", f"₹{total_fraud:,.2f}" if total_fraud else "₹0.00")
+
+        st.divider()
+
+        # ── LLM Intelligence Summary Brief (Groq Powered) ─────────────
+        if summary_text:
+            st.markdown("#### 🤖 Groq AI — Criminal Network Intelligence Briefing")
+            st.info(summary_text)
             st.divider()
 
-            # Render visual graph
-            render_network_graph(graph_data)
-
-        st.session_state["build_graph"] = False
+        # ── Visual Plotly Graph ─────────────────────────────────────────
+        render_network_graph(graph_data)
 
 
 # ═══════════════════════════════════════════════════════════════════════
