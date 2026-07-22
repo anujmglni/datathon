@@ -636,14 +636,103 @@ def get_entity_dossier_profile(entity_id: str, entity_type: str = "accused") -> 
         """
         cases = execute_query(cases_sql, (raw_id if raw_id.isdigit() else 0,))
 
-    return {
+    res_payload = {
         "status": "success",
         "entity_id": entity_id,
         "entity_type": entity_type,
         "label": entity_name,
-        "risk_level": "HIGH RISK / RECIDIVIST" if len(cases) >= 2 else "STANDARD RECORD",
+        "risk_level": "CRITICAL (HIGH RECIDIVISM)" if len(cases) >= 3 else ("HIGH RISK / RECIDIVIST" if len(cases) >= 2 else "STANDARD RECORD"),
         "total_cases": len(cases),
         "attributes": attributes,
         "cases": cases
     }
+
+    res_payload["recommendations"] = generate_personalized_recommendations(res_payload)
+    return res_payload
+
+
+def generate_personalized_recommendations(profileData: Dict[str, Any]) -> List[str]:
+    """
+    Generates case-tailored operational recommendations grounded in Karnataka Police Manual (KPM),
+    Criminal Procedure Code (CrPC), and statutory IPC offenses.
+    """
+    if not profileData:
+        return []
+
+    recs = []
+    cases = profileData.get("cases", [])
+    
+    districts = list(set(c.get("DistrictName") or c.get("districtname") for c in cases if (c.get("DistrictName") or c.get("districtname"))))
+    stations = list(set(c.get("StationName") or c.get("stationname") for c in cases if (c.get("StationName") or c.get("stationname"))))
+    crime_groups = list(set(c.get("CrimeGroupName") or c.get("crimegroupname") for c in cases if (c.get("CrimeGroupName") or c.get("crimegroupname"))))
+    ios = list(set(c.get("IOName") or c.get("ioname") for c in cases if (c.get("IOName") or c.get("ioname"))))
+
+    main_dist = districts[0] if districts else (profileData.get("attributes", {}).get("District") or profileData.get("district") or "Jurisdictional District")
+    main_station = stations[0] if stations else (profileData.get("attributes", {}).get("Station") or profileData.get("station") or "Local Police Station")
+    main_io = ios[0] if ios else "Assigned Investigating Officer"
+    label = profileData.get("label") or "Subject Entity"
+    entity_type = profileData.get("entity_type") or "accused"
+
+    # 1. Recidivism & Threat Level Protocol
+    risk = profileData.get("risk_level", "")
+    if "CRITICAL" in risk or len(cases) >= 3:
+        recs.append(
+            f"**History-Sheet & Security Bond (Sec 110 CrPC):** Open History Sheet (HS-B Register) under KPM Sec 1205 across {', '.join(districts) if districts else main_dist} jurisdiction. File habitual offender security bond proceedings before the Special Executive Magistrate."
+        )
+    elif "HIGH" in risk:
+        recs.append(
+            f"**Surveillance & Night Beat Patrol (KPM Sec 1201):** Deploy targeted night beat patrols in {main_station} jurisdiction to monitor habitual movements of {label}."
+        )
+    else:
+        recs.append(
+            f"**CCTNS Real-Time Alert & Tracking:** Flag {label} in CCTNS database for automated alert triggers across all station checkposts in {main_dist}."
+        )
+
+    # 2. Crime-Category Specific Operational Protocols
+    crime_text = (" ".join(crime_groups) + " " + " ".join((c.get("BriefFacts") or c.get("brieffacts") or "") for c in cases)).lower()
+
+    if "property" in crime_text or "theft" in crime_text or "burglary" in crime_text:
+        recs.append(
+            f"**Stolen Property Receiver Inspection (Sec 411 IPC):** Direct {main_io} at {main_station} to conduct surprise search operations at local pawn shops and second-hand receivers in {main_dist}. Requisition Fingerprint Bureau (FPB Madiwala) matching."
+        )
+
+    if "fraud" in crime_text or "financial" in crime_text or "cheating" in crime_text or entity_type == "financial":
+        recs.append(
+            f"**Bank Account Freeze & Lien Order (Sec 102 CrPC):** Issue immediate Sec 102 CrPC notices to destination bank branches to freeze funds linked to {label}. File escalation on National Cyber Crime Reporting Portal (1930 NCRP)."
+        )
+        recs.append(
+            f"**Nodal Officer CDR & IP Log Requisition (Sec 91 CrPC):** Issue notices under Sec 91 CrPC to Telecom Nodal Officers for Call Detail Records (CDR) and IP login location logs."
+        )
+
+    if "document" in crime_text or "forgery" in crime_text:
+        recs.append(
+            f"**Forensic Examination & Sub-Registrar Notice (Sec 91 CrPC):** Send questioned documents to State Forensic Science Laboratory (SFSL) Madiwala for ink/handwriting analysis. Issue Sec 91 CrPC notices to Sub-Registrar office in {main_dist} to freeze encumbrance titles."
+        )
+
+    if "body" in crime_text or "murder" in crime_text or "assault" in crime_text:
+        recs.append(
+            f"**Non-Bailable Warrant Execution & Witness Protection (Sec 70 CrPC / 195A IPC):** Issue and execute Non-Bailable Warrants (NBW) via Local Intelligence Unit (LIU) and implement witness protection protocols under Sec 195A IPC for victims in {main_station} cases."
+        )
+
+    if entity_type == "location":
+        recs.append(
+            f"**Hotspot Police Patrol & CCTV Expansion:** Increase Crime Prevention Party (CPP) frequency at {label} and install high-definition ANPR (Automatic Number Plate Recognition) cameras at key arterial junctions."
+        )
+
+    if len(districts) > 1:
+        recs.append(
+            f"**Inter-District Joint Taskforce:** Form a dedicated joint investigation unit spanning {', '.join(districts)} districts under the direct supervision of Superintendent of Police (SP) / DCP {districts[0]}."
+        )
+    elif len(stations) > 1:
+        recs.append(
+            f"**Inter-Station Crime Coordination:** Convene weekly crime coordination conference between Inspectors of {', '.join(stations)} to cross-reference modus operandi."
+        )
+
+    if len(recs) < 3:
+        recs.append(
+            f"**Evidentiary Charge-Sheet Audit:** Conduct expedited case review under supervision of Sub-Divisional Police Officer (SDPO) to ensure timely filing of Charge Sheet before the Jurisdictional Magistrate."
+        )
+
+    return recs
+
 
