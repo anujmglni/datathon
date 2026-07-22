@@ -501,6 +501,29 @@ export default function NetworkGraphTab() {
               <h2 className="font-bold text-xs text-slate-900">Network Filters</h2>
             </div>
 
+            {/* 0. Real-time Node Search Bar with Voice Input */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-slate-700 block">Search Graph</label>
+              <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 focus-within:border-blue-600 focus-within:bg-white transition">
+                <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Suspect, station, account…"
+                  value={searchQuery}
+                  onChange={(e) => handleSearchNode(e.target.value)}
+                  className="w-full bg-transparent border-none outline-none text-xs text-slate-900 placeholder-slate-400 font-medium"
+                />
+                <button
+                  type="button"
+                  onClick={handleVoiceSearch}
+                  title="Voice Search (English & Kannada)"
+                  className={`p-1 rounded-md transition shrink-0 ${isListening ? "bg-rose-500 text-white animate-pulse" : "hover:bg-slate-200 text-slate-500"}`}
+                >
+                  {isListening ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
+                </button>
+              </div>
+            </div>
+
             {/* 1. District Dropdown */}
             <div className="space-y-1">
               <label className="text-[11px] font-semibold text-slate-700 block">District</label>
@@ -517,6 +540,7 @@ export default function NetworkGraphTab() {
                 ))}
               </select>
             </div>
+
 
             {/* 2. Crime Type Dropdown */}
             <div className="space-y-1">
@@ -650,44 +674,27 @@ export default function NetworkGraphTab() {
         {/* COLUMN 2: CENTER GRAPH CANVAS PANEL (Fills remaining width) */}
         <main className="flex-1 bg-white border border-slate-200 rounded-2xl relative flex flex-col justify-between overflow-hidden shadow-2xs">
           
-          {/* Top Info Banners & Search Bar */}
-          <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between gap-2 pointer-events-none">
+          {/* Top Info Header Bar */}
+          <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
             
-            {/* Real-time Node Search Bar with Voice Input */}
-            <div className="pointer-events-auto flex items-center gap-1.5 bg-white/95 backdrop-blur border border-slate-200 px-2.5 py-1 rounded-xl shadow-md text-xs">
-              <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <input
-                type="text"
-                placeholder="Search suspect, station or account…"
-                value={searchQuery}
-                onChange={(e) => handleSearchNode(e.target.value)}
-                className="bg-transparent border-none outline-none text-xs text-slate-800 placeholder-slate-400 w-44 font-medium"
-              />
-              <button
-                type="button"
-                onClick={handleVoiceSearch}
-                title="Voice Search (English & Kannada)"
-                className={`p-1 rounded-lg transition ${isListening ? "bg-rose-500 text-white animate-pulse" : "hover:bg-slate-100 text-slate-600"}`}
-              >
-                {isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-
-            {/* Server-Side Node Cap Warning Banner */}
-            {payload?.capped && (
-              <div className="pointer-events-auto bg-amber-500/90 backdrop-blur text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-md flex items-center gap-1.5 border border-amber-400">
-                <ShieldAlert className="w-4 h-4 shrink-0" />
-                <span>Showing top 300 most-connected nodes — narrow filters to see all</span>
-              </div>
-            )}
-
-            {!payload?.capped && <div />}
-
             {/* Live Counter Badge */}
-            <div className="pointer-events-auto bg-slate-900/80 backdrop-blur text-white text-[11px] font-mono font-semibold px-3 py-1.5 rounded-xl shadow-md border border-slate-800">
+            <div className="pointer-events-auto bg-slate-900/85 backdrop-blur text-white text-[11px] font-mono font-semibold px-3 py-1 rounded-xl shadow-xs border border-slate-800">
               {payload ? `${payload.nodes_rendered} nodes · ${payload.total_edges} links` : "0 nodes"}
             </div>
+
+            {/* Server-Side Node Cap Warning Badge */}
+            {payload?.capped ? (
+              <div 
+                title="Showing top 300 most-connected nodes to maintain optimal performance — narrow left filters to view specific sub-networks."
+                className="pointer-events-auto bg-amber-500/90 backdrop-blur text-white text-[11px] font-semibold px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1.5 border border-amber-400 cursor-help"
+              >
+                <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                <span>Top 300 Nodes (Capped)</span>
+              </div>
+            ) : null}
+
           </div>
+
 
           {/* Cytoscape Graph Canvas Target */}
           <div className="flex-1 w-full h-full relative">
