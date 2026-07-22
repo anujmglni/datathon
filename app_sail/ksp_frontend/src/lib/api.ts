@@ -119,16 +119,17 @@ export async function fetchEntityProfile(entityId: string, entityType: string): 
 }
 
 export async function fetchAnalyticsSummary(
-
   district: string = "all",
   crimeType: string = "all",
-  dateRange: string = "365"
+  dateRange: string = "365",
+  selectedYear: string = "all"
 ): Promise<AnalyticsResponsePayload | null> {
   try {
     const params = new URLSearchParams({
       district,
       crime_type: crimeType,
-      date_range: dateRange
+      date_range: dateRange,
+      selected_year: selectedYear
     });
     const res = await fetch(`${API_BASE}/api/analytics/summary?${params.toString()}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -138,6 +139,7 @@ export async function fetchAnalyticsSummary(
     return null;
   }
 }
+
 
 
 

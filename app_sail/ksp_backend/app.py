@@ -277,18 +277,21 @@ def get_network_profile(
 def get_analytics_summary(
     district: str = Query("all"),
     crime_type: str = Query("all"),
-    date_range: str = Query("365")
+    date_range: str = Query("365"),
+    selected_year: str = Query("all")
 ):
     """
     Returns pre-aggregated dataset for all 8 analytics charts along with
-    dynamically generated plain-language Explainable AI descriptions.
+    dynamically generated plain-language summaries and Karnataka map node data.
     """
     from services.analytics_service import fetch_analytics_summary
     return fetch_analytics_summary(
         district=district,
         crime_type=crime_type,
-        date_range=date_range
+        date_range=date_range,
+        selected_year=selected_year
     )
+
 
 
 

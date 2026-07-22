@@ -1,6 +1,6 @@
 """
 Crime Analytics & Sociological Crime Insights Service.
-Provides high-performance GROUP BY SQL aggregations and dynamic plain-language Explainable AI summaries.
+Provides high-performance GROUP BY SQL aggregations, Karnataka map node metadata, and plain-language summaries.
 """
 
 from typing import Dict, Any, List
@@ -13,6 +13,7 @@ DISTRICT_SOCIO_ECONOMIC = {
     "Mysuru": {"literacy_rate": 72.8, "urbanization_pct": 41.5, "unemployment_rate": 4.8},
     "Mysuru City": {"literacy_rate": 72.8, "urbanization_pct": 41.5, "unemployment_rate": 4.8},
     "Belagavi": {"literacy_rate": 73.5, "urbanization_pct": 25.3, "unemployment_rate": 4.2},
+    "Belagavi City": {"literacy_rate": 73.5, "urbanization_pct": 25.3, "unemployment_rate": 4.2},
     "Kalaburagi": {"literacy_rate": 65.1, "urbanization_pct": 32.6, "unemployment_rate": 6.1},
     "Kalaburgi": {"literacy_rate": 65.1, "urbanization_pct": 32.6, "unemployment_rate": 6.1},
     "Udupi": {"literacy_rate": 86.2, "urbanization_pct": 28.4, "unemployment_rate": 3.9},
@@ -24,15 +25,43 @@ DISTRICT_SOCIO_ECONOMIC = {
     "K.Railways": {"literacy_rate": 78.5, "urbanization_pct": 60.0, "unemployment_rate": 4.5},
 }
 
+DISTRICT_MAP_PINS = {
+    "Bengaluru City": {"lat": 12.9716, "lng": 77.5946, "x": 68, "y": 76},
+    "Bengaluru Dist": {"lat": 12.9716, "lng": 77.5946, "x": 68, "y": 76},
+    "Mysuru": {"lat": 12.2958, "lng": 76.6394, "x": 52, "y": 86},
+    "Mysuru City": {"lat": 12.2958, "lng": 76.6394, "x": 52, "y": 86},
+    "Mangaluru": {"lat": 12.9141, "lng": 74.8560, "x": 24, "y": 79},
+    "Dakshina Kannada": {"lat": 12.9141, "lng": 74.8560, "x": 24, "y": 79},
+    "Belagavi": {"lat": 15.8497, "lng": 74.5086, "x": 26, "y": 26},
+    "Belagavi City": {"lat": 15.8497, "lng": 74.5086, "x": 26, "y": 26},
+    "Kalaburagi": {"lat": 17.3297, "lng": 76.8343, "x": 65, "y": 14},
+    "Kalaburgi": {"lat": 17.3297, "lng": 76.8343, "x": 65, "y": 14},
+    "Udupi": {"lat": 13.3409, "lng": 74.7421, "x": 22, "y": 68},
+    "Hubballi-Dharwad": {"lat": 15.3647, "lng": 75.1240, "x": 35, "y": 38},
+    "Dharwad": {"lat": 15.3647, "lng": 75.1240, "x": 35, "y": 38},
+    "Chikkamagaluru": {"lat": 13.3161, "lng": 75.7720, "x": 39, "y": 66},
+    "Hassan": {"lat": 13.0068, "lng": 76.1004, "x": 46, "y": 74},
+    "Shivamogga": {"lat": 13.9299, "lng": 75.5681, "x": 37, "y": 54},
+    "Davanagere": {"lat": 14.4644, "lng": 75.9218, "x": 45, "y": 47},
+    "Ballari": {"lat": 15.1394, "lng": 76.9214, "x": 62, "y": 42},
+    "Tumakuru": {"lat": 13.3401, "lng": 77.1006, "x": 58, "y": 68},
+    "Kolar": {"lat": 13.1367, "lng": 78.1292, "x": 82, "y": 74},
+    "Ramanagara": {"lat": 12.7209, "lng": 77.2799, "x": 63, "y": 81},
+    "Mandya": {"lat": 12.5218, "lng": 76.8951, "x": 56, "y": 81},
+    "Chitradurga": {"lat": 14.2251, "lng": 76.3980, "x": 52, "y": 51},
+    "K.Railways": {"lat": 12.9716, "lng": 77.5946, "x": 66, "y": 74},
+}
+
 
 def fetch_analytics_summary(
     district: str = "all",
     crime_type: str = "all",
-    date_range: str = "365"
+    date_range: str = "365",
+    selected_year: str = "all"
 ) -> Dict[str, Any]:
     """
     Returns pre-aggregated dataset for all 8 required analytics charts along with
-    dynamically generated plain-language Explainable AI descriptions.
+    dynamically generated plain-language summaries and interactive Karnataka node coordinates.
     """
     try:
         # Build SQL Filter Clauses
@@ -46,6 +75,10 @@ def fetch_analytics_summary(
         if crime_type and crime_type.lower() != "all":
             where_clauses.append("ch.crimegroupname ILIKE %s")
             params.append(f"%{crime_type}%")
+
+        if selected_year and selected_year.lower() != "all":
+            where_clauses.append("c.crimeregistereddate LIKE %s")
+            params.append(f"{selected_year}%")
 
         if date_range == "30":
             where_clauses.append("c.crimeregistereddate >= '2025-01-01'")
@@ -155,11 +188,14 @@ def fetch_analytics_summary(
             if top_bar_count else "This bar chart ranks top districts by volume and gravity-weighted severity score."
         )
 
-        # --- 5. CHOROPLETH / DISTRICT CASE DENSITY MAP ---
+        # --- 5. CHOROPLETH / KARNATAKA MAP CASE NODES ---
         map_sql = f"""
             SELECT 
-                COALESCE(d.districtname, 'Statewide') AS district_name,
-                COUNT(c.casemasterid) AS case_count
+                COALESCE(d.districtname, 'Bengaluru City') AS district_name,
+                COUNT(c.casemasterid) AS case_count,
+                MAX(COALESCE(ch.crimegroupname, 'Cyber & Financial Crime')) AS top_crime_type,
+                MAX(COALESCE(u.unitname, 'Station Division')) AS primary_station,
+                MAX(COALESCE(c.brieffacts, 'Investigation active under CCTNS monitoring.')) AS sample_facts
             FROM casemaster c
             LEFT JOIN unit u ON c.policestationid = u.unitid
             LEFT JOIN district d ON u.districtid = d.districtid
@@ -168,15 +204,32 @@ def fetch_analytics_summary(
             GROUP BY district_name
             ORDER BY case_count DESC;
         """
-        map_rows = execute_query(map_sql, tuple(params))
-        total_map_cases = sum(r.get("case_count", 0) for r in map_rows) or 1
+        map_query_rows = execute_query(map_sql, tuple(params))
+        total_map_cases = sum(r.get("case_count", 0) for r in map_query_rows) or 1
+        
+        map_rows = []
+        for r in map_query_rows:
+            d_name = r.get("district_name")
+            pin = DISTRICT_MAP_PINS.get(d_name, {"lat": 12.9716, "lng": 77.5946, "x": 50, "y": 50})
+            map_rows.append({
+                "district_name": d_name,
+                "case_count": r.get("case_count", 0),
+                "top_crime_type": r.get("top_crime_type"),
+                "primary_station": r.get("primary_station"),
+                "sample_facts": r.get("sample_facts", "")[:120] + "...",
+                "lat": pin["lat"],
+                "lng": pin["lng"],
+                "x": pin["x"],
+                "y": pin["y"]
+            })
+
         top_map = map_rows[0] if map_rows else {}
         top_pct = round((top_map.get("case_count", 0) / total_map_cases) * 100, 1)
 
         map_desc = (
-            f"This district map illustrates geographical case density across Karnataka. "
-            f"{top_map.get('district_name', 'Bengaluru')} represents {top_pct}% of total reported state volume with {top_map.get('case_count', 0)} cases."
-            if top_map else "This map shows district-wise case density across Karnataka."
+            f"This interactive Karnataka geographical map plots case density nodes across station jurisdictions. "
+            f"{top_map.get('district_name', 'Bengaluru')} represents {top_pct}% of total state volume with {top_map.get('case_count', 0)} active cases."
+            if top_map else "This map displays case nodes across Karnataka districts."
         )
 
         # --- 6. DONUT: CASE STATUS BREAKDOWN ---
@@ -251,7 +304,8 @@ def fetch_analytics_summary(
             "filters_applied": {
                 "district": district,
                 "crime_type": crime_type,
-                "date_range": date_range
+                "date_range": date_range,
+                "selected_year": selected_year
             },
             "heatmap_district_month": {
                 "data": heatmap1_rows,
@@ -274,7 +328,7 @@ def fetch_analytics_summary(
             "choropleth_district_map": {
                 "data": map_rows,
                 "description": map_desc,
-                "how_to_read": "District cards are shaded based on total case count density across Karnataka jurisdiction."
+                "how_to_read": "Hover on any pulsing case node pin to expand detailed case breakdown card."
             },
             "donut_case_status": {
                 "data": status_rows,
