@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { fetchAnalyticsSummary, fetchNetworkOptions } from "@/lib/api";
 import { AnalyticsResponsePayload } from "@/lib/types";
 import {
@@ -30,13 +31,19 @@ import {
   ShieldCheck,
   Building2,
   DollarSign,
-  Users,
-  Network,
-  AlertTriangle,
-  Flame,
-  ShieldAlert,
-  ArrowRightLeft
+  Users
 } from "lucide-react";
+
+// Dynamically import NDAP Leaflet Map component on client side (ssr: false)
+const KarnatakaLeafletMap = dynamic(() => import("@/components/KarnatakaLeafletMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center text-slate-400 text-xs font-semibold flex items-center justify-center gap-2 col-span-full h-[460px]">
+      <div className="w-4 h-4 rounded-full bg-blue-500 animate-ping" />
+      Initializing NDAP Karnataka GIS Leaflet Engine…
+    </div>
+  ),
+});
 
 // Colorblind-Safe Palette
 const CHART_COLORS = [
@@ -49,38 +56,6 @@ const CHART_COLORS = [
   "#4f46e5", // Indigo
   "#be185d", // Pink
 ];
-
-// Node Risk Color Mapping
-const RISK_COLOR_MAP: Record<string, { bg: string; border: string; text: string; label: string; badgeBg: string }> = {
-  severity: {
-    bg: "bg-rose-600",
-    border: "border-rose-300",
-    text: "text-rose-600",
-    label: "Grave / Heinous Severity",
-    badgeBg: "bg-rose-500/20 text-rose-300 border-rose-500/40"
-  },
-  hotspot: {
-    bg: "bg-amber-500",
-    border: "border-amber-200",
-    text: "text-amber-500",
-    label: "Financial Fraud Hotspot",
-    badgeBg: "bg-amber-500/20 text-amber-300 border-amber-500/40"
-  },
-  repeat_offender: {
-    bg: "bg-purple-600",
-    border: "border-purple-300",
-    text: "text-purple-600",
-    label: "Repeat Offender Syndicate",
-    badgeBg: "bg-purple-500/20 text-purple-300 border-purple-500/40"
-  },
-  standard: {
-    bg: "bg-blue-600",
-    border: "border-blue-300",
-    text: "text-blue-600",
-    label: "Standard Case Jurisdiction",
-    badgeBg: "bg-blue-500/20 text-blue-300 border-blue-500/40"
-  }
-};
 
 // Sequential Color Scale for Heatmap cells
 function getHeatmapColor(value: number, max: number): string {
@@ -108,10 +83,6 @@ export default function AnalyticsTab() {
   const [loading, setLoading] = useState<boolean>(true);
   const [payload, setPayload] = useState<AnalyticsResponsePayload | null>(null);
 
-  // Map Hovered Node / Link State
-  const [hoveredNode, setHoveredNode] = useState<any | null>(null);
-  const [hoveredLink, setHoveredLink] = useState<any | null>(null);
-
   // Bar Chart Toggle Mode ("count" vs "gravity")
   const [barMode, setBarMode] = useState<"count" | "gravity">("count");
 
@@ -137,7 +108,7 @@ export default function AnalyticsTab() {
     loadAnalytics();
   }, [loadAnalytics]);
 
-  // Download Chart Image directly as PNG
+  // Download Chart SVG/Canvas Image directly as PNG
   const downloadChartImage = (cardId: string, chartTitle: string) => {
     const cardElem = document.getElementById(cardId);
     if (!cardElem) return;
@@ -230,11 +201,6 @@ export default function AnalyticsTab() {
           </div>
 
           <div class="grid">
-            <div class="card" style="grid-column: span 2;">
-              <div class="card-title">Central Karnataka Geo-Spatial Intelligence & Cross-District Network Map</div>
-              <div class="summary-box">${payload.choropleth_district_map?.description}</div>
-            </div>
-
             <div class="card">
               <div class="card-title">1. Heatmap — Crime Density (District × Month)</div>
               <div class="summary-box">${payload.heatmap_district_month?.description}</div>
@@ -253,6 +219,11 @@ export default function AnalyticsTab() {
             <div class="card">
               <div class="card-title">4. Bar Chart — Top Offenses by Volume & Gravity</div>
               <div class="summary-box">${payload.bar_top_offenses?.description}</div>
+            </div>
+
+            <div class="card" style="grid-column: span 2;">
+              <div class="card-title">Central Karnataka NDAP Leaflet GIS Map & Cross-District Network</div>
+              <div class="summary-box">${payload.choropleth_district_map?.description}</div>
             </div>
 
             <div class="card">
@@ -377,242 +348,14 @@ export default function AnalyticsTab() {
       {loading && (
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center flex flex-col items-center justify-center space-y-3">
           <div className="w-8 h-8 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" />
-          <p className="text-xs font-semibold text-slate-600">Aggregating Karnataka Crime Datasets & Case Network Links…</p>
+          <p className="text-xs font-semibold text-slate-600">Aggregating Karnataka Datasets & Leaflet GIS Map Layers…</p>
         </div>
       )}
 
       {!loading && payload && (
         <div className="space-y-6">
           
-          {/* FEATURED CENTER HERO MAP: KARNATAKA STATE GEO-SPATIAL INTELLIGENCE MAP (FULL WIDTH / MIDDLE OF PAGE) */}
-          <div id="chart-card-hero-map" className="bg-slate-950 border-2 border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden space-y-4">
-            
-            {/* Header Controls Bar */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3 z-10 relative">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400">
-                  <MapPin className="w-5 h-5 animate-pulse" />
-                </div>
-                <div>
-                  <h2 className="font-extrabold text-base text-white tracking-wide flex items-center gap-2">
-                    Karnataka State Police — Geo-Spatial Intelligence & Cross-District Network Map
-                    <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-0.5 rounded-full font-mono uppercase">
-                      Live CCTNS Network
-                    </span>
-                  </h2>
-                  <p className="text-xs text-slate-400 font-medium">
-                    District-wise case nodes color-coded by intelligence risk type with cross-district criminal network linkages.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => downloadChartImage("chart-card-hero-map", "Karnataka_GeoSpatial_NetworkMap")}
-                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-700 transition cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Export Map Image
-                </button>
-              </div>
-            </div>
-
-            {/* COLOR-CODED RISK LEGEND OVERLAY */}
-            <div className="flex flex-wrap items-center gap-4 bg-slate-900/90 backdrop-blur border border-slate-800 p-2.5 rounded-xl text-xs z-10 relative">
-              <span className="text-slate-400 font-bold text-[11px] uppercase tracking-wider">Node Intelligence Legend:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-rose-600 animate-pulse border border-white" />
-                <span className="text-slate-200 font-medium text-[11px]">🔴 High Severity (Grave)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-amber-500 border border-white" />
-                <span className="text-slate-200 font-medium text-[11px]">🟡 Financial Fraud Hotspot</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-purple-600 border border-white" />
-                <span className="text-slate-200 font-medium text-[11px]">🟣 Repeat Offender Syndicate</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-blue-600 border border-white" />
-                <span className="text-slate-200 font-medium text-[11px]">🔵 Standard Case Node</span>
-              </div>
-              <div className="flex items-center gap-1.5 border-l border-slate-800 pl-3">
-                <span className="w-5 h-0.5 bg-blue-400 border-t border-dashed border-blue-300" />
-                <span className="text-blue-300 font-medium text-[11px]">🌐 Cross-District Link Line (Hover for details)</span>
-              </div>
-            </div>
-
-            {/* HIGH-TECH MAP CANVAS CONTAINER (Height ~480px) */}
-            <div className="relative bg-slate-900/80 rounded-2xl border border-slate-800 h-[480px] w-full overflow-hidden flex items-center justify-center">
-              
-              {/* Background Radar / Grid Texture */}
-              <div className="absolute inset-0 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:24px_24px] opacity-25" />
-
-              {/* State Outer Boundaries Display Label */}
-              <div className="absolute top-4 left-4 z-10 bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-xl font-mono text-xs text-slate-300">
-                <span>STATE BOUNDARY: 11.5°N - 18.5°N | 74.0°E - 78.5°E</span>
-              </div>
-
-              {/* SVG LAYER FOR INTER-DISTRICT NETWORK LINKAGE LINES */}
-              <svg className="absolute inset-0 w-full h-full z-10 pointer-events-auto">
-                <defs>
-                  <linearGradient id="linkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.8" />
-                    <stop offset="100%" stopColor="#ec4899" stopOpacity="0.8" />
-                  </linearGradient>
-                </defs>
-
-                {mapLinks.map((link: any, idx: number) => {
-                  const srcNode = mapNodes.find((n: any) => n.district_name === link.source);
-                  const tgtNode = mapNodes.find((n: any) => n.district_name === link.target);
-                  if (!srcNode || !tgtNode) return null;
-
-                  const x1 = `${srcNode.x}%`;
-                  const y1 = `${srcNode.y}%`;
-                  const x2 = `${tgtNode.x}%`;
-                  const y2 = `${tgtNode.y}%`;
-
-                  const isHovered = hoveredLink === link;
-
-                  return (
-                    <g key={idx} className="cursor-pointer group" onMouseEnter={() => setHoveredLink(link)} onMouseLeave={() => setHoveredLink(null)}>
-                      {/* Interactive Invisible Thick Stroke for Easy Hover */}
-                      <line
-                        x1={x1}
-                        y1={y1}
-                        x2={x2}
-                        y2={y2}
-                        stroke="transparent"
-                        strokeWidth="16"
-                      />
-                      {/* Visible Network Connection Line */}
-                      <line
-                        x1={x1}
-                        y1={y1}
-                        x2={x2}
-                        y2={y2}
-                        stroke={isHovered ? "#ec4899" : "url(#linkGrad)"}
-                        strokeWidth={isHovered ? "4" : "2.5"}
-                        strokeDasharray="6 4"
-                        className="transition-all duration-300"
-                      />
-                    </g>
-                  );
-                })}
-              </svg>
-
-              {/* CASE NODES RENDERED ACROSS KARNATAKA DISTRICTS */}
-              {mapNodes.map((node: any) => {
-                const riskStyle = RISK_COLOR_MAP[node.risk_type] || RISK_COLOR_MAP.standard;
-                return (
-                  <div
-                    key={node.id}
-                    style={{ left: `${node.x}%`, top: `${node.y}%` }}
-                    className="absolute -translate-x-1/2 -translate-y-1/2 z-20 group cursor-pointer"
-                    onMouseEnter={() => setHoveredNode(node)}
-                    onMouseLeave={() => setHoveredNode(null)}
-                  >
-                    {/* Pulsing Node Pin */}
-                    <div className="relative flex items-center justify-center">
-                      <span className={`animate-ping absolute inline-flex h-7 w-7 rounded-full opacity-75 ${riskStyle.bg}`} />
-                      <div className={`relative inline-flex rounded-full h-6 w-6 border-2 border-white shadow-xl text-[10px] font-extrabold text-white items-center justify-center ${riskStyle.bg}`}>
-                        {node.case_count}
-                      </div>
-                    </div>
-
-                    {/* District Node Label */}
-                    <span className="mt-1 block text-[10px] font-bold text-white bg-slate-950/90 border border-slate-800 px-2 py-0.5 rounded-md shadow whitespace-nowrap text-center">
-                      {node.district_name}
-                    </span>
-                  </div>
-                );
-              })}
-
-              {/* HOVER EXPANDED CASE DETAIL CARD */}
-              {hoveredNode && (
-                <div className="absolute bottom-4 left-4 right-4 z-30 bg-slate-900/95 backdrop-blur border-2 border-blue-500 rounded-2xl p-4 shadow-2xl animate-fadeIn space-y-2 text-white">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-blue-400" />
-                      <h4 className="font-extrabold text-sm text-white">{hoveredNode.district_name} District Jurisdiction</h4>
-                    </div>
-                    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${RISK_COLOR_MAP[hoveredNode.risk_type]?.badgeBg}`}>
-                      {RISK_COLOR_MAP[hoveredNode.risk_type]?.label} ({hoveredNode.case_count} Cases)
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3 text-xs">
-                    <div>
-                      <span className="text-slate-400 font-medium">Primary Station:</span>
-                      <p className="font-bold text-slate-200 truncate">{hoveredNode.primary_station}</p>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 font-medium">Top Crime Category:</span>
-                      <p className="font-bold text-blue-400 truncate">{hoveredNode.top_crime_type}</p>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 font-medium">Assigned Officer (IO):</span>
-                      <p className="font-bold text-emerald-400 truncate">{hoveredNode.investigating_officer}</p>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-800 text-xs text-slate-300">
-                    <span className="font-bold text-slate-400">Sample FIR Narrative: </span>
-                    <span className="italic">"{hoveredNode.sample_facts}"</span>
-                  </div>
-                </div>
-              )}
-
-              {/* HOVER EXPANDED CROSS-DISTRICT NETWORK LINK EVIDENCE CARD */}
-              {hoveredLink && (
-                <div className="absolute top-4 left-4 right-4 z-30 bg-slate-900/95 backdrop-blur border-2 border-pink-500 rounded-2xl p-4 shadow-2xl animate-fadeIn space-y-2 text-white">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <div className="flex items-center gap-2">
-                      <Network className="w-4 h-4 text-pink-400 animate-pulse" />
-                      <h4 className="font-extrabold text-sm text-white">
-                        Cross-District Network Linkage: {hoveredLink.source} ↔ {hoveredLink.target}
-                      </h4>
-                    </div>
-                    <span className="bg-pink-500/20 text-pink-300 border border-pink-500/40 text-xs font-bold px-2.5 py-0.5 rounded-full">
-                      ₹{hoveredLink.transfer_amount_inr.toLocaleString()} Proceeds Link
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <span className="text-slate-400 font-medium">Relation Type:</span>
-                      <p className="font-bold text-pink-300">{hoveredLink.relation}</p>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 font-medium">Shared Accused / Gang:</span>
-                      <p className="font-bold text-amber-300">{hoveredLink.shared_accused}</p>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-800 text-xs text-slate-300 flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-slate-400">Linked Cases: </span>
-                      <span className="font-mono text-blue-300">{hoveredLink.linked_firs}</span>
-                    </div>
-                    <div className="text-[11px] font-bold text-emerald-400">
-                      ⚡ Action: {hoveredLink.directive}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-            </div>
-
-            {/* Plain Language Summary Box */}
-            <div className="bg-slate-900 border-l-4 border-rose-500 rounded-r-2xl p-3 text-xs text-slate-200 space-y-1">
-              <p className="leading-relaxed font-medium">{payload.choropleth_district_map?.description}</p>
-              <p className="text-[11px] text-rose-300 italic pt-1 border-t border-slate-800">
-                How to read: {payload.choropleth_district_map?.how_to_read}
-              </p>
-            </div>
-          </div>
-
-          {/* GRID OF 7 SECONDARY ANALYTICS CHARTS */}
+          {/* SECTION 1: TOP 4 CHARTS (HEATMAPS, LINE TREND, BAR RANKING) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* CHART 1: HEATMAP - DISTRICT x MONTH */}
@@ -867,13 +610,26 @@ export default function AnalyticsTab() {
               </div>
             </div>
 
-            {/* CHART 6: DONUT CHART - CASE STATUS (Animated) */}
+          </div>
+
+          {/* SECTION 2: CENTER OF THE ANALYTICS TAB PAGE — NDAP KARNATAKA LEAFLET GIS MAP STACK (IN THE MIDDLE) */}
+          <KarnatakaLeafletMap
+            nodes={mapNodes}
+            links={mapLinks}
+            description={payload.choropleth_district_map?.description}
+            howToRead={payload.choropleth_district_map?.how_to_read}
+          />
+
+          {/* SECTION 3: BOTTOM 3 CHARTS (DONUT, FINANCIAL SUMMARY, SOCIOLOGICAL SCATTER) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* CHART 6: DONUT CHART - CASE STATUS */}
             <div id="chart-card-6" className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs flex flex-col justify-between space-y-4">
               <div>
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                    <h3 className="font-bold text-sm text-slate-900">6. Case Disposition Status Breakdown</h3>
+                    <h3 className="font-bold text-xs text-slate-900">5. Case Disposition Status</h3>
                   </div>
                   <button
                     onClick={() => downloadChartImage("chart-card-6", "Case_Status_DonutChart")}
@@ -884,7 +640,7 @@ export default function AnalyticsTab() {
                   </button>
                 </div>
 
-                <div className="h-60 mt-4">
+                <div className="h-56 mt-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -893,8 +649,8 @@ export default function AnalyticsTab() {
                         nameKey="status_name"
                         cx="50%"
                         cy="50%"
-                        innerRadius={50}
-                        outerRadius={80}
+                        innerRadius={45}
+                        outerRadius={75}
                         paddingAngle={4}
                         isAnimationActive={true}
                         animationDuration={1200}
@@ -905,25 +661,25 @@ export default function AnalyticsTab() {
                         ))}
                       </Pie>
                       <Tooltip contentStyle={{ borderRadius: "8px", fontSize: "12px" }} />
-                      <Legend wrapperStyle={{ fontSize: "11px" }} />
+                      <Legend wrapperStyle={{ fontSize: "10px" }} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
               {/* Plain Language Summary Box */}
-              <div className="bg-indigo-50/70 border-l-4 border-indigo-600 rounded-r-xl p-3 text-xs text-indigo-950 space-y-1">
+              <div className="bg-indigo-50/70 border-l-4 border-indigo-600 rounded-r-xl p-2.5 text-xs text-indigo-950">
                 <p className="leading-relaxed font-medium">{payload.donut_case_status?.description}</p>
               </div>
             </div>
 
-            {/* CHART 7: FINANCIAL CRIME SUMMARY (Animated) */}
+            {/* CHART 7: FINANCIAL CRIME SUMMARY */}
             <div id="chart-card-7" className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs flex flex-col justify-between space-y-4">
               <div>
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-emerald-600" />
-                    <h3 className="font-bold text-sm text-slate-900">7. Financial Crime (Lost vs Recovered INR)</h3>
+                    <h3 className="font-bold text-xs text-slate-900">6. Financial Crime Lost vs Recovered</h3>
                   </div>
                   <button
                     onClick={() => downloadChartImage("chart-card-7", "Financial_Crime_Summary")}
@@ -934,14 +690,14 @@ export default function AnalyticsTab() {
                   </button>
                 </div>
 
-                <div className="h-60 mt-4">
+                <div className="h-56 mt-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={payload.financial_crime_summary?.data || []}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="fraud_type" tick={{ fontSize: 9, fill: "#64748b" }} interval={0} angle={-15} textAnchor="end" />
-                      <YAxis tick={{ fontSize: 10, fill: "#64748b" }} />
+                      <YAxis tick={{ fontSize: 9, fill: "#64748b" }} />
                       <Tooltip contentStyle={{ borderRadius: "8px", fontSize: "12px" }} formatter={(value: any) => `₹${Number(value).toLocaleString()}`} />
-                      <Legend wrapperStyle={{ fontSize: "11px" }} />
+                      <Legend wrapperStyle={{ fontSize: "10px" }} />
                       <Bar
                         dataKey="total_lost_inr"
                         fill="#dc2626"
@@ -964,18 +720,18 @@ export default function AnalyticsTab() {
               </div>
 
               {/* Plain Language Summary Box */}
-              <div className="bg-emerald-50/70 border-l-4 border-emerald-600 rounded-r-xl p-3 text-xs text-emerald-950 space-y-1">
+              <div className="bg-emerald-50/70 border-l-4 border-emerald-600 rounded-r-xl p-2.5 text-xs text-emerald-950">
                 <p className="leading-relaxed font-medium">{payload.financial_crime_summary?.description}</p>
               </div>
             </div>
 
-            {/* CHART 8: SOCIOLOGICAL CORRELATION SCATTER PLOT (Animated) */}
+            {/* CHART 8: SOCIOLOGICAL CORRELATION SCATTER PLOT */}
             <div id="chart-card-8" className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs flex flex-col justify-between space-y-4">
               <div>
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-blue-600" />
-                    <h3 className="font-bold text-sm text-slate-900">8. Sociological Correlation (Urbanization vs Crime)</h3>
+                    <h3 className="font-bold text-xs text-slate-900">7. Sociological Correlation</h3>
                   </div>
                   <button
                     onClick={() => downloadChartImage("chart-card-8", "Sociological_ScatterPlot")}
@@ -986,12 +742,12 @@ export default function AnalyticsTab() {
                   </button>
                 </div>
 
-                <div className="h-60 mt-4">
+                <div className="h-56 mt-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis type="number" dataKey="urbanization_pct" name="Urbanization %" unit="%" tick={{ fontSize: 10 }} />
-                      <YAxis type="number" dataKey="case_count" name="Case Count" tick={{ fontSize: 10 }} />
+                      <XAxis type="number" dataKey="urbanization_pct" name="Urbanization %" unit="%" tick={{ fontSize: 9 }} />
+                      <YAxis type="number" dataKey="case_count" name="Case Count" tick={{ fontSize: 9 }} />
                       <Tooltip cursor={{ strokeDasharray: "3 3" }} contentStyle={{ borderRadius: "8px", fontSize: "12px" }} />
                       <Scatter
                         name="District Crime Density"
@@ -1006,9 +762,9 @@ export default function AnalyticsTab() {
               </div>
 
               {/* Plain Language Summary Box */}
-              <div className="bg-blue-50/70 border-l-4 border-blue-600 rounded-r-xl p-3 text-xs text-blue-950 space-y-1">
+              <div className="bg-blue-50/70 border-l-4 border-blue-600 rounded-r-xl p-2.5 text-xs text-blue-950 space-y-1">
                 <p className="leading-relaxed font-medium">{payload.sociological_correlation?.description}</p>
-                <p className="text-[10px] text-blue-700 italic pt-1 border-t border-blue-100/60">
+                <p className="text-[10px] text-blue-700 italic pt-0.5 border-t border-blue-100/60">
                   How to read: {payload.sociological_correlation?.how_to_read}
                 </p>
               </div>
