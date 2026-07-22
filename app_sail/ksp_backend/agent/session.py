@@ -11,6 +11,8 @@ class Session:
             "active_district": None,
             "active_crime_type": None,
             "active_year": None,
+            "active_search_keywords": [],
+            "active_ipc_sections": [],
             "active_accused_id": None,
             "active_case_no": None,
             "last_sql_executed": None
@@ -24,8 +26,14 @@ class Session:
 
     def update_slots(self, new_slots: dict):
         for k, v in new_slots.items():
-            if v is not None and k in self.active_slots:
+            if v and k in self.active_slots:
                 self.active_slots[k] = v
+
+    def reset(self):
+        self.history = []
+        for k in self.active_slots:
+            self.active_slots[k] = None if not isinstance(self.active_slots[k], list) else []
+
 
     def get_recent_history(self, n_turns: int = 4) -> list[dict]:
         return self.history[-(n_turns * 2):]
