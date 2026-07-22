@@ -573,12 +573,14 @@ def get_entity_dossier_profile(entity_id: str, entity_type: str = "accused") -> 
                 c.brieffacts AS BriefFacts,
                 d.districtname AS DistrictName,
                 u.unitname AS StationName,
-                ch.crimegroupname AS CrimeGroupName
+                ch.crimegroupname AS CrimeGroupName,
+                e.firstname AS IOName
             FROM victim v
             JOIN casemaster c ON v.casemasterid = c.casemasterid
             LEFT JOIN unit u ON c.policestationid = u.unitid
             LEFT JOIN district d ON u.districtid = d.districtid
             LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
+            LEFT JOIN employee e ON c.policepersonid = e.employeeid
             WHERE v.victimmasterid = %s
             ORDER BY c.casemasterid DESC;
         """
@@ -597,6 +599,7 @@ def get_entity_dossier_profile(entity_id: str, entity_type: str = "accused") -> 
                 d.districtname AS DistrictName,
                 u.unitname AS StationName,
                 ch.crimegroupname AS CrimeGroupName,
+                e.firstname AS IOName,
                 ft.fraudtype AS FraudType,
                 ft.amountlostinr AS AmountLostINR
             FROM financialtransaction ft
@@ -604,6 +607,7 @@ def get_entity_dossier_profile(entity_id: str, entity_type: str = "accused") -> 
             LEFT JOIN unit u ON c.policestationid = u.unitid
             LEFT JOIN district d ON u.districtid = d.districtid
             LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
+            LEFT JOIN employee e ON c.policepersonid = e.employeeid
             WHERE ft.bankaccountlast4 = %s
             ORDER BY c.casemasterid DESC;
         """
@@ -625,16 +629,30 @@ def get_entity_dossier_profile(entity_id: str, entity_type: str = "accused") -> 
                 c.brieffacts AS BriefFacts,
                 d.districtname AS DistrictName,
                 u.unitname AS StationName,
-                ch.crimegroupname AS CrimeGroupName
+                ch.crimegroupname AS CrimeGroupName,
+                e.firstname AS IOName
             FROM casemaster c
             LEFT JOIN unit u ON c.policestationid = u.unitid
             LEFT JOIN district d ON u.districtid = d.districtid
             LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
+            LEFT JOIN employee e ON c.policepersonid = e.employeeid
             WHERE c.policestationid = %s
             ORDER BY c.casemasterid DESC
             LIMIT 50;
         """
         cases = execute_query(cases_sql, (raw_id if raw_id.isdigit() else 0,))
+
+    # Standardize dictionary keys for frontend consumption
+    for c in cases:
+        c["CaseMasterID"] = c.get("CaseMasterID") or c.get("casemasterid")
+        c["CrimeNo"] = c.get("CrimeNo") or c.get("crimeno")
+        c["CrimeRegisteredDate"] = c.get("CrimeRegisteredDate") or c.get("crimeregistereddate")
+        c["BriefFacts"] = c.get("BriefFacts") or c.get("brieffacts")
+        c["DistrictName"] = c.get("DistrictName") or c.get("districtname")
+        c["StationName"] = c.get("StationName") or c.get("stationname")
+        c["CrimeGroupName"] = c.get("CrimeGroupName") or c.get("crimegroupname")
+        c["IOName"] = c.get("IOName") or c.get("ioname") or "Inspector Assigned"
+
 
     res_payload = {
         "status": "success",
