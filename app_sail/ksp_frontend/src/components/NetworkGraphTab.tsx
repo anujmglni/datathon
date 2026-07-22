@@ -20,8 +20,14 @@ import {
   FileText,
   CreditCard,
   User,
-  Users
+  Users,
+  Search,
+  Mic,
+  MicOff,
+  Download,
+  Share2
 } from "lucide-react";
+
 
 function generatePersonalizedRecommendations(profileData: any): string[] {
   if (!profileData) return [];
@@ -145,9 +151,86 @@ export default function NetworkGraphTab() {
 
 
 
+  // --- Search & Canvas Features ---
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isListening, setIsListening] = useState<boolean>(false);
+  const [colorMode, setColorMode] = useState<"type" | "cluster">("type");
+
   // Cytoscape Container Ref & Instance
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<any>(null);
+
+  const handleSearchNode = useCallback((query: string) => {
+    setSearchQuery(query);
+    if (!cyRef.current) return;
+    const cy = cyRef.current;
+    const q = query.trim().toLowerCase();
+    
+    if (!q) {
+      cy.nodes().style({ opacity: 1 });
+      cy.edges().style({ opacity: 0.6 });
+      return;
+    }
+
+    const matched = cy.nodes().filter((node: any) => {
+      const label = (node.data("label") || "").toLowerCase();
+      const type = (node.data("type") || "").toLowerCase();
+      const dist = (node.data("district") || "").toLowerCase();
+      return label.includes(q) || type.includes(q) || dist.includes(q);
+    });
+
+    if (matched.length > 0) {
+      cy.nodes().style({ opacity: 0.2 });
+      cy.edges().style({ opacity: 0.1 });
+      
+      matched.style({ opacity: 1 });
+      matched.neighborhood().style({ opacity: 0.8 });
+      cy.animate({ fit: { eles: matched, padding: 50 }, duration: 500 });
+    }
+  }, []);
+
+  const handleVoiceSearch = useCallback(() => {
+    if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
+      alert("Voice search is not supported in this browser. Please type your search query.");
+      return;
+    }
+    try {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-IN";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = () => setIsListening(false);
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        handleSearchNode(transcript);
+      };
+
+      recognition.start();
+    } catch (e) {
+      console.error("Speech recognition error:", e);
+      setIsListening(false);
+    }
+  }, [handleSearchNode]);
+
+  const handleDownloadImage = useCallback(() => {
+    if (!cyRef.current) return;
+    try {
+      const pngData = cyRef.current.png({ full: true, scale: 2, bg: "#ffffff" });
+      const link = document.createElement("a");
+      link.href = pngData;
+      link.download = `ksp_criminal_network_${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {
+      console.error("PNG export error:", e);
+    }
+  }, []);
+
 
 
   // Fetch Dropdown Filter Options on Mount
@@ -567,9 +650,29 @@ export default function NetworkGraphTab() {
         {/* COLUMN 2: CENTER GRAPH CANVAS PANEL (Fills remaining width) */}
         <main className="flex-1 bg-white border border-slate-200 rounded-2xl relative flex flex-col justify-between overflow-hidden shadow-2xs">
           
-          {/* Top Info Banners */}
+          {/* Top Info Banners & Search Bar */}
           <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between gap-2 pointer-events-none">
             
+            {/* Real-time Node Search Bar with Voice Input */}
+            <div className="pointer-events-auto flex items-center gap-1.5 bg-white/95 backdrop-blur border border-slate-200 px-2.5 py-1 rounded-xl shadow-md text-xs">
+              <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <input
+                type="text"
+                placeholder="Search suspect, station or account…"
+                value={searchQuery}
+                onChange={(e) => handleSearchNode(e.target.value)}
+                className="bg-transparent border-none outline-none text-xs text-slate-800 placeholder-slate-400 w-44 font-medium"
+              />
+              <button
+                type="button"
+                onClick={handleVoiceSearch}
+                title="Voice Search (English & Kannada)"
+                className={`p-1 rounded-lg transition ${isListening ? "bg-rose-500 text-white animate-pulse" : "hover:bg-slate-100 text-slate-600"}`}
+              >
+                {isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+
             {/* Server-Side Node Cap Warning Banner */}
             {payload?.capped && (
               <div className="pointer-events-auto bg-amber-500/90 backdrop-blur text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-md flex items-center gap-1.5 border border-amber-400">
@@ -618,14 +721,14 @@ export default function NetworkGraphTab() {
             <button
               onClick={handleZoomIn}
               title="Zoom In"
-              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-700 transition"
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-700 transition cursor-pointer"
             >
               <ZoomIn className="w-4 h-4" />
             </button>
             <button
               onClick={handleZoomOut}
               title="Zoom Out"
-              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-700 transition"
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-700 transition cursor-pointer"
             >
               <ZoomOut className="w-4 h-4" />
             </button>
@@ -633,11 +736,20 @@ export default function NetworkGraphTab() {
             <button
               onClick={handleResetView}
               title="Reset View"
-              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-700 transition flex items-center gap-1 text-[11px] font-semibold text-slate-700 px-2"
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-700 transition flex items-center gap-1 text-[11px] font-semibold px-2 cursor-pointer"
             >
-              <RotateCcw className="w-3.5 h-3.5" /> Reset View
+              <RotateCcw className="w-3.5 h-3.5" /> Reset
+            </button>
+            <div className="w-px h-4 bg-slate-200" />
+            <button
+              onClick={handleDownloadImage}
+              title="Download Canvas PNG"
+              className="p-1.5 hover:bg-blue-50 text-blue-700 rounded-lg transition flex items-center gap-1 text-[11px] font-semibold px-2 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-blue-600" /> Export PNG
             </button>
           </div>
+
         </main>
 
         {/* COLUMN 3: RIGHT DETAIL & EXPLAINABLE AI EVIDENCE PANEL (~240px Fixed Width) */}
