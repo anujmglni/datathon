@@ -427,14 +427,6 @@ export default function KarnatakaLeafletMap({
             <RotateCcw className="w-3.5 h-3.5" />
             Reset Zoom
           </button>
-
-          <button
-            onClick={handleExportMapImage}
-            className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-blue-200 transition cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Export Map
-          </button>
         </div>
       </div>
 
