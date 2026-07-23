@@ -351,6 +351,7 @@ def fetch_analytics_summary(
                     STRING_AGG(DISTINCT a.accusedname, ', ') AS accused_names,
                     ROW_NUMBER() OVER (PARTITION BY COALESCE(d.districtname, 'Bengaluru City') ORDER BY c.casemasterid) as rn
                 FROM casemaster c
+                {join_sql}
                 LEFT JOIN unit u ON c.policestationid = u.unitid
                 LEFT JOIN district d ON u.districtid = d.districtid
                 LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
@@ -431,6 +432,7 @@ def fetch_analytics_summary(
                 COALESCE(s.casestatusname, 'Under Investigation') AS status_name,
                 COUNT(c.casemasterid) AS case_count
             FROM casemaster c
+            {join_sql}
             LEFT JOIN casestatusmaster s ON c.casestatusid = s.casestatusid
             LEFT JOIN unit u ON c.policestationid = u.unitid
             LEFT JOIN district d ON u.districtid = d.districtid

@@ -112,7 +112,8 @@ export default function KarnatakaLeafletMap({
 
     L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
       attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',
-      maxZoom: 18
+      maxZoom: 18,
+      crossOrigin: "anonymous"
     }).addTo(map);
 
     map.on("zoomend", () => {

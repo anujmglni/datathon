@@ -139,11 +139,22 @@ def generate_pdf_report(title: str, markdown_content: str, filename: str = None)
                             header, encoded = img_src.split(",", 1)
                             img_data = base64.b64decode(encoded)
                             img_stream = io.BytesIO(img_data)
-                            rl_img = RLImage(img_stream, width=440, height=210)
+                            try:
+                                from PIL import Image as PILImage
+                                pil_img = PILImage.open(img_stream)
+                                orig_w, orig_h = pil_img.size
+                                aspect = float(orig_h) / float(orig_w) if orig_w > 0 else 0.5
+                                target_w = 460
+                                target_h = int(target_w * aspect)
+                                img_stream.seek(0)
+                                rl_img = RLImage(img_stream, width=target_w, height=target_h)
+                            except Exception:
+                                rl_img = RLImage(img_stream, width=440, height=220)
+
                             story.append(rl_img)
                             if caption:
                                 story.append(Paragraph(f"<i>Figure: {caption}</i>", subtitle_style))
-                            story.append(Spacer(1, 6))
+                            story.append(Spacer(1, 8))
                 except Exception as img_err:
                     logger.debug(f"PDF Image insert error: {img_err}")
             elif line_str.startswith("- ") or line_str.startswith("* "):
