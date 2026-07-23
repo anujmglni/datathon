@@ -146,38 +146,86 @@ def seed_sociological_indicators():
     print(f"✅ Seeded socio-demographic indicators for {count} districts.")
     return {"status": "success", "districts_seeded": count}
 
-def search_similar_past_cases(query_text: str, top_k: int = 5) -> list[dict]:
+def search_similar_past_cases(query_text: str, top_k: int = 5, min_similarity: float = 0.20) -> list[dict]:
+
     """
-    Uses TF-IDF Vector Cosine Similarity over CaseMaster.BriefFacts to find similar past cases.
-    Satisfies Requirement 6 (Similar past cases) & Requirement 3 (Modus Operandi).
+    Performs true vector similarity search over CaseMaster using pgvector (or SQLite fallback).
+    Requires a minimum similarity floor of min_similarity (default 0.35).
     """
-    cases = execute_query("SELECT CaseMasterID, CrimeNo, BriefFacts, CrimeRegisteredDate FROM CaseMaster WHERE BriefFacts IS NOT NULL LIMIT 1000;")
-    if not cases:
+    if not query_text or not query_text.strip():
         return []
 
-    texts = [c.get("BriefFacts") or c.get("brieffacts") or "" for c in cases]
-    texts.insert(0, query_text)
+    from services.embed_cases import embed_text
+    query_vector = embed_text(query_text)
 
-    vectorizer = TfidfVectorizer(stop_words='english')
-    tfidf_matrix = vectorizer.fit_transform(texts)
-
-    cosine_sim = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:]).flatten()
-    related_indices = cosine_sim.argsort()[::-1][:top_k]
-
+    conn, db_type = get_connection()
     results = []
-    for idx in related_indices:
-        sim_score = float(cosine_sim[idx])
-        if sim_score > 0.05:
-            case = cases[idx]
-            results.append({
-                "case_id": case.get("CaseMasterID") or case.get("casemasterid"),
-                "crime_no": case.get("CrimeNo") or case.get("crimeno"),
-                "date": case.get("CrimeRegisteredDate") or case.get("crimeregistereddate"),
-                "brief_facts": case.get("BriefFacts") or case.get("brieffacts"),
-                "similarity_score": round(sim_score, 4)
-            })
+    try:
+        if db_type == "postgresql":
+            sql = """
+                SELECT 
+                    c.casemasterid AS case_id,
+                    c.crimeno AS crime_no,
+                    c.brieffacts AS brief_facts,
+                    c.crimeregistereddate AS date,
+                    1 - (e.embedding <=> %s::vector) AS similarity_score
+                FROM case_embeddings e
+                JOIN casemaster c ON e.casemasterid = c.casemasterid
+                WHERE (1 - (e.embedding <=> %s::vector)) >= %s
+                ORDER BY e.embedding <=> %s::vector
+                LIMIT %s;
+            """
+            with conn.cursor() as cur:
+                cur.execute(sql, (query_vector, query_vector, min_similarity, query_vector, top_k))
+                rows = cur.fetchall()
+                for r in rows:
+                    results.append({
+                        "case_id": r[0],
+                        "crime_no": r[1],
+                        "brief_facts": r[2],
+                        "date": str(r[3]),
+                        "similarity_score": round(float(r[4]), 4)
+                    })
+        else:
+            # SQLite fallback: compute numpy cosine similarity
+            import json
+            import numpy as np
+            q_vec = np.array(query_vector, dtype=np.float32)
+
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT c.casemasterid, c.crimeno, c.brieffacts, c.crimeregistereddate, e.embedding_json
+                FROM case_embeddings e
+                JOIN casemaster c ON e.casemasterid = c.casemasterid;
+            """)
+            rows = cur.fetchall()
+
+            scored_cases = []
+            for r in rows:
+                if not r[4]:
+                    continue
+                emb = np.array(json.loads(r[4]), dtype=np.float32)
+                sim = float(np.dot(q_vec, emb))
+                if sim >= min_similarity:
+                    scored_cases.append({
+                        "case_id": r[0],
+                        "crime_no": r[1],
+                        "brief_facts": r[2],
+                        "date": str(r[3]),
+                        "similarity_score": round(sim, 4)
+                    })
+
+            scored_cases.sort(key=lambda x: x["similarity_score"], reverse=True)
+            results = scored_cases[:top_k]
+
+    except Exception as e:
+        print(f"⚠️ search_similar_past_cases error: {e}")
+        return []
+    finally:
+        release_connection(conn, db_type)
 
     return results
+
 
 def run_full_ingestion_pipeline():
     """
