@@ -125,6 +125,27 @@ def generate_pdf_report(title: str, markdown_content: str, filename: str = None)
             elif line_str.startswith("#### "):
                 clean_text = convert_md_to_html(line_str[5:].strip())
                 story.append(Paragraph(clean_text, subheading_style))
+            elif line_str.startswith("![") and "](" in line_str:
+                try:
+                    import base64
+                    import io
+                    import re
+                    from reportlab.platypus import Image as RLImage
+                    img_match = re.search(r'!\[(.*?)\]\((.*?)\)', line_str)
+                    if img_match:
+                        caption = img_match.group(1)
+                        img_src = img_match.group(2)
+                        if img_src.startswith("data:image"):
+                            header, encoded = img_src.split(",", 1)
+                            img_data = base64.b64decode(encoded)
+                            img_stream = io.BytesIO(img_data)
+                            rl_img = RLImage(img_stream, width=440, height=210)
+                            story.append(rl_img)
+                            if caption:
+                                story.append(Paragraph(f"<i>Figure: {caption}</i>", subtitle_style))
+                            story.append(Spacer(1, 6))
+                except Exception as img_err:
+                    logger.debug(f"PDF Image insert error: {img_err}")
             elif line_str.startswith("- ") or line_str.startswith("* "):
                 clean_text = convert_md_to_html(line_str[2:].strip())
                 story.append(Paragraph(f"• {clean_text}", bullet_style))

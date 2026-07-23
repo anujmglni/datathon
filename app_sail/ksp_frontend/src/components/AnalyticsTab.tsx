@@ -130,35 +130,92 @@ export default function AnalyticsTab() {
     }
   };
 
-  // Full Executive Analytics Dashboard PDF Report Export
+  const [exportingPdf, setExportingPdf] = useState<boolean>(false);
+
+  const captureCardPng = async (elemId: string): Promise<string> => {
+    const elem = document.getElementById(elemId);
+    if (!elem) return "";
+    try {
+      return await toPng(elem, {
+        cacheBust: true,
+        backgroundColor: "#ffffff",
+        quality: 0.9,
+        pixelRatio: 1.5,
+        filter: (node) => {
+          if (node instanceof HTMLElement && node.classList.contains("leaflet-control-container")) return false;
+          return true;
+        }
+      });
+    } catch (e) {
+      console.error(`Failed to capture ${elemId}:`, e);
+      return "";
+    }
+  };
+
+  // Full Executive Analytics Dashboard PDF Report Export with Visual Charts
   const handleExportFullDashboard = async () => {
     if (!payload) return;
+    setExportingPdf(true);
     try {
+      const c1Png = await captureCardPng("chart-card-1");
+      const c2Png = await captureCardPng("chart-card-2");
+      const c3Png = await captureCardPng("chart-card-3");
+      const c4Png = await captureCardPng("chart-card-4");
+      const mapPng = await captureCardPng("ndap-karnataka-map-card");
+      const c6Png = await captureCardPng("chart-card-6");
+      const c7Png = await captureCardPng("chart-card-7");
+      const c8Png = await captureCardPng("chart-card-8");
+
       const markdown = [
-        "# KARNATAKA STATE POLICE — EXECUTIVE CRIME ANALYTICS & TREND REPORT",
-        `**Generated:** ${new Date().toLocaleString()} | **Jurisdiction:** ${district.toUpperCase()} | **Crime Head:** ${crimeType.toUpperCase()} | **Timeline:** Last ${dateRange} Days`,
+        "# KARNATAKA STATE POLICE — EXECUTIVE CRIME ANALYTICS REPORT",
+        `**Jurisdiction:** ${district.toUpperCase()} | **Crime Head:** ${crimeType.toUpperCase()} | **Year:** ${selectedYear.toUpperCase()} | **Timeline:** Last ${dateRange} Days`,
         "---",
         "",
-        "## 1. EXECUTIVE SUMMARY & KEY STATISTICAL INSIGHTS",
-        `- **Crime Volume Trend:** ${payload.line_crime_trends?.description || 'Data active under CCTNS tracking.'}`,
-        `- **Statutory Gravity Ranking:** ${payload.bar_top_offenses?.description || 'Volume and severity score indexed.'}`,
-        `- **Spatial Hotspot Density:** ${payload.choropleth_district_map?.description || 'District node cluster active.'}`,
-        `- **Case Disposition Status:** ${payload.donut_case_status?.description || 'Disposition tracked across state.'}`,
-        `- **Financial Fraud Recoveries:** ${payload.financial_crime_summary?.description || 'Audit active under CrPC Sec 102.'}`,
+        "## 1. DISTRICT × MONTH CRIME DENSITY HEATMAP",
+        c1Png ? `![District x Month Heatmap](${c1Png})` : "",
+        `**Analytical Insights:** ${payload.heatmap_district_month?.description || 'Density matrix active.'}`,
         "",
         "---",
         "",
-        "## 2. TOP DISTRICT CRIMINOLOGICAL RANKING (BY VOLUME & GRAVITY)",
-        ...(payload.bar_top_offenses?.data || []).map((d: any, idx: number) => 
-          `${idx + 1}. **${d.label}:** ${d.case_count} Cases Registered | Severity Gravity Score: ${roundVal(d.gravity_score, 1)} pts`
-        ),
+        "## 2. CRIME TYPE × TIME OF DAY TEMPORAL CLUSTERING",
+        c2Png ? `![Crime Type x Time Window](${c2Png})` : "",
+        `**Analytical Insights:** ${payload.heatmap_crime_timeofday?.description || 'Temporal distribution tracked.'}`,
         "",
         "---",
         "",
-        "## 3. FINANCIAL CRIME LOSS VS RECOVERY AUDIT",
-        ...(payload.financial_crime_summary?.data || []).map((f: any) => 
-          `- **${f.fraud_type}:** Total Lost ₹${Number(f.total_lost_inr || 0).toLocaleString()} INR | Total Recovered ₹${Number(f.total_recovered_inr || 0).toLocaleString()} INR (${f.transaction_count || 0} Transactions)`
-        ),
+        "## 3. MONTHLY CRIME TREND OVER TIME",
+        c3Png ? `![Monthly Crime Trend Line Chart](${c3Png})` : "",
+        `**Analytical Insights:** ${payload.line_crime_trends?.description || 'Progression timeline active.'}`,
+        "",
+        "---",
+        "",
+        "## 4. TOP DISTRICTS BY VOLUME & STATUTORY SEVERITY GRAVITY",
+        c4Png ? `![Top Districts Bar Chart](${c4Png})` : "",
+        `**Analytical Insights:** ${payload.bar_top_offenses?.description || 'Gravity ranking indexed.'}`,
+        "",
+        "---",
+        "",
+        "## 5. CENTRAL KARNATAKA NDAP GIS MAP & CROSS-DISTRICT NETWORKS",
+        mapPng ? `![Karnataka GIS Leaflet Map](${mapPng})` : "",
+        `**Analytical Insights:** ${payload.choropleth_district_map?.description || 'Spatial nodes & network links active.'}`,
+        "",
+        "---",
+        "",
+        "## 6. CASE DISPOSITION STATUS BREAKDOWN",
+        c6Png ? `![Case Status Donut Chart](${c6Png})` : "",
+        `**Analytical Insights:** ${payload.donut_case_status?.description || 'Status disposition tracked.'}`,
+        "",
+        "---",
+        "",
+        "## 7. FINANCIAL CRIME LOSS VS RECOVERY AUDIT",
+        c7Png ? `![Financial Crime Bar Chart](${c7Png})` : "",
+        `**Analytical Insights:** ${payload.financial_crime_summary?.description || 'Recovery rate tracked.'}`,
+        "",
+        "---",
+        "",
+        "## 8. SOCIOLOGICAL CORRELATION SCATTER PLOT",
+        c8Png ? `![Sociological Correlation](${c8Png})` : "",
+        `**Analytical Insights:** ${payload.sociological_correlation?.description || 'Demographic correlation active.'}`,
         "",
         "---",
         "",
@@ -173,7 +230,7 @@ export default function AnalyticsTab() {
         const blobUrl = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = blobUrl;
-        link.download = res.filename || `ksp_analytics_report_${Date.now()}.pdf`;
+        link.download = res.filename || `ksp_analytics_dashboard_${district}_${Date.now()}.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -181,6 +238,8 @@ export default function AnalyticsTab() {
       }
     } catch (e) {
       console.error("Dashboard PDF export failed:", e);
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -271,11 +330,11 @@ export default function AnalyticsTab() {
         {/* Export Full Dashboard Button */}
         <button
           onClick={handleExportFullDashboard}
-          disabled={loading || !payload}
+          disabled={loading || !payload || exportingPdf}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50"
         >
           <Download className="w-4 h-4" />
-          Export Dashboard PDF
+          {exportingPdf ? "Generating Visual PDF Report…" : "Export Dashboard PDF"}
         </button>
       </div>
 
