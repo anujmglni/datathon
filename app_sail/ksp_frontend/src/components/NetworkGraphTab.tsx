@@ -376,9 +376,10 @@ export default function NetworkGraphTab() {
             selector: "edge",
             style: {
               width: "mapData(weight, 1, 5, 1.5, 5)",
-              "line-color": "#cbd5e1",
+              "line-color": "#94a3b8",
               "curve-style": "bezier",
-              opacity: 0.75
+              "control-point-step-size": 40,
+              opacity: 0.65
             }
           },
           {
@@ -408,18 +409,18 @@ export default function NetworkGraphTab() {
         layout: {
           name: "cose",
           animate: true,
-          animationDuration: 500,
+          animationDuration: 600,
           refresh: 20,
           fit: true,
-          padding: 50,
-          componentSpacing: 100,
-          nodeOverlap: 40,
-          nodeRepulsion: () => 450000,
-          idealEdgeLength: () => 110,
-          edgeElasticity: () => 45,
+          padding: 60,
+          componentSpacing: 120,
+          nodeOverlap: 60,
+          nodeRepulsion: () => 800000,
+          idealEdgeLength: () => 130,
+          edgeElasticity: () => 35,
           nestingFactor: 1.2,
-          gravity: 0.2,
-          numIter: 1000
+          gravity: 0.15,
+          numIter: 1200
         }
       });
 
@@ -1130,13 +1131,16 @@ export default function NetworkGraphTab() {
                       
                       const res = await generatePdfReport(`KSP Intelligence Dossier - ${profileData.label}`, markdown);
                       if (res.download_url) {
+                        const pdfRes = await fetch(res.download_url);
+                        const blob = await pdfRes.blob();
+                        const blobUrl = window.URL.createObjectURL(blob);
                         const link = document.createElement("a");
-                        link.href = res.download_url;
+                        link.href = blobUrl;
                         link.download = res.filename || `ksp_dossier_${Date.now()}.pdf`;
-                        link.target = "_blank";
                         document.body.appendChild(link);
                         link.click();
                         document.body.removeChild(link);
+                        window.URL.revokeObjectURL(blobUrl);
                       }
                     } catch (e) {
                       console.error("PDF generation failed:", e);
