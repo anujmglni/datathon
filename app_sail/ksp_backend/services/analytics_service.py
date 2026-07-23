@@ -162,9 +162,19 @@ def fetch_analytics_summary(
             where_clauses.append("(d.districtname ILIKE %s OR u.unitname ILIKE %s)")
             params.extend([f"%{district}%", f"%{district}%"])
 
+        query_vector_str = None
+        join_sql = ""
         if crime_type and crime_type.lower() != "all":
-            where_clauses.append("ch.crimegroupname ILIKE %s")
-            params.append(f"%{crime_type}%")
+            try:
+                from services.embed_cases import embed_text
+                q_vector = embed_text(crime_type)
+                query_vector_str = str(q_vector)
+                join_sql = "LEFT JOIN case_embeddings e ON c.casemasterid = e.casemasterid"
+                where_clauses.append("(ch.crimegroupname ILIKE %s OR c.brieffacts ILIKE %s OR (1 - (e.embedding <=> %s::vector)) >= 0.20)")
+                params.extend([f"%{crime_type}%", f"%{crime_type}%", query_vector_str])
+            except Exception as err:
+                where_clauses.append("(ch.crimegroupname ILIKE %s OR c.brieffacts ILIKE %s)")
+                params.extend([f"%{crime_type}%", f"%{crime_type}%"])
 
         if selected_year and selected_year.lower() != "all":
             where_clauses.append("c.crimeregistereddate LIKE %s")
@@ -186,6 +196,7 @@ def fetch_analytics_summary(
                 COALESCE(SUBSTRING(c.crimeregistereddate FROM 1 FOR 7), '2025-01') AS month_str,
                 COUNT(c.casemasterid) AS case_count
             FROM casemaster c
+            {join_sql}
             LEFT JOIN unit u ON c.policestationid = u.unitid
             LEFT JOIN district d ON u.districtid = d.districtid
             LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
@@ -214,6 +225,7 @@ def fetch_analytics_summary(
                 END AS time_of_day,
                 COUNT(c.casemasterid) AS case_count
             FROM casemaster c
+            {join_sql}
             LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
             LEFT JOIN unit u ON c.policestationid = u.unitid
             LEFT JOIN district d ON u.districtid = d.districtid
@@ -236,6 +248,7 @@ def fetch_analytics_summary(
                 COALESCE(SUBSTRING(c.crimeregistereddate FROM 1 FOR 7), '2025-01') AS month_str,
                 COUNT(c.casemasterid) AS total_cases
             FROM casemaster c
+            {join_sql}
             LEFT JOIN unit u ON c.policestationid = u.unitid
             LEFT JOIN district d ON u.districtid = d.districtid
             LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
@@ -260,6 +273,7 @@ def fetch_analytics_summary(
                 COUNT(c.casemasterid) AS case_count,
                 SUM(COALESCE(c.gravityoffenceid, 1) * 2.5) AS gravity_score
             FROM casemaster c
+            {join_sql}
             LEFT JOIN unit u ON c.policestationid = u.unitid
             LEFT JOIN district d ON u.districtid = d.districtid
             LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
@@ -289,6 +303,7 @@ def fetch_analytics_summary(
                 MAX(COALESCE(u.unitname, 'Station Division')) AS primary_station,
                 MAX(COALESCE(c.brieffacts, 'Investigation active under CCTNS monitoring.')) AS sample_facts
             FROM casemaster c
+            {join_sql}
             LEFT JOIN unit u ON c.policestationid = u.unitid
             LEFT JOIN district d ON u.districtid = d.districtid
             LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid

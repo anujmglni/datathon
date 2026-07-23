@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { fetchAnalyticsSummary, fetchNetworkOptions } from "@/lib/api";
 import { AnalyticsResponsePayload } from "@/lib/types";
+import { toPng } from "html-to-image";
 import {
   BarChart,
   Bar,
@@ -108,62 +109,25 @@ export default function AnalyticsTab() {
     loadAnalytics();
   }, [loadAnalytics]);
 
-  // Download Chart SVG/Canvas Image directly as PNG
-  const downloadChartImage = (cardId: string, chartTitle: string) => {
+  // Download Chart Card visually as high-res PNG image
+  const downloadChartImage = async (cardId: string, chartTitle: string) => {
     const cardElem = document.getElementById(cardId);
     if (!cardElem) return;
 
-    const svgElem = cardElem.querySelector("svg");
-    if (svgElem) {
-      try {
-        const svgData = new XMLSerializer().serializeToString(svgElem);
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        const img = new Image();
-        const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-        const url = URL.createObjectURL(svgBlob);
-
-        img.onload = () => {
-          canvas.width = Math.max(img.width || 600, 600);
-          canvas.height = Math.max(img.height || 350, 350);
-          if (ctx) {
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          }
-          const pngUrl = canvas.toDataURL("image/png");
-          const a = document.createElement("a");
-          a.href = pngUrl;
-          a.download = `ksp_${chartTitle.toLowerCase().replace(/[^a-z0-9]/g, "_")}.png`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        };
-        img.src = url;
-        return;
-      } catch (e) {
-        console.error("SVG export failed fallback:", e);
-      }
+    try {
+      const dataUrl = await toPng(cardElem, {
+        cacheBust: true,
+        backgroundColor: "#ffffff",
+        quality: 0.95,
+        pixelRatio: 2
+      });
+      const link = document.createElement("a");
+      link.download = `ksp_${chartTitle.toLowerCase().replace(/[^a-z0-9]/g, "_")}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error("Failed to download chart image:", err);
     }
-
-    // Fallback text snapshot print
-    const printWin = window.open("", "_blank");
-    if (!printWin) return;
-    printWin.document.write(`
-      <html>
-        <head><title>${chartTitle} Export</title></head>
-        <body style="font-family:sans-serif; padding:30px;">
-          <h2>Karnataka State Police — ${chartTitle}</h2>
-          <p>Generated: ${new Date().toLocaleString()}</p>
-          <div style="border:1px solid #ccc; padding:20px; border-radius:12px;">
-            ${cardElem.innerHTML}
-          </div>
-          <script>window.onload = function() { window.print(); window.close(); }</script>
-        </body>
-      </html>
-    `);
-    printWin.document.close();
   };
 
   // Full Dashboard PDF Export
