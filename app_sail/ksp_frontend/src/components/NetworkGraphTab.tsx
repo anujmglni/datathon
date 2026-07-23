@@ -327,14 +327,23 @@ export default function NetworkGraphTab() {
               "background-color": "data(color)",
               label: "data(label)",
               color: "#0f172a",
-              "font-size": "11px",
+              "font-size": "10px",
               "font-weight": "bold",
               "text-valign": "bottom",
-
-              "text-margin-y": 5,
-              width: "36px",
-              height: "36px",
-              "border-width": "2px",
+              "text-halign": "center",
+              "text-margin-y": 6,
+              "text-wrap": "wrap",
+              "text-max-width": "80px",
+              "text-background-color": "#ffffff",
+              "text-background-opacity": 0.92,
+              "text-background-padding": "3px 5px",
+              "text-background-shape": "roundrectangle",
+              "text-border-color": "#cbd5e1",
+              "text-border-width": 1,
+              "text-border-opacity": 0.8,
+              width: 32,
+              height: 32,
+              "border-width": 2,
               "border-color": "#ffffff"
             }
           },
@@ -399,14 +408,18 @@ export default function NetworkGraphTab() {
         layout: {
           name: "cose",
           animate: true,
-          animationDuration: 400,
+          animationDuration: 500,
           refresh: 20,
           fit: true,
-          padding: 30,
-          componentSpacing: 40,
-          nodeRepulsion: () => 8000,
-          idealEdgeLength: () => 70,
-          edgeElasticity: () => 100
+          padding: 50,
+          componentSpacing: 100,
+          nodeOverlap: 40,
+          nodeRepulsion: () => 450000,
+          idealEdgeLength: () => 110,
+          edgeElasticity: () => 45,
+          nestingFactor: 1.2,
+          gravity: 0.2,
+          numIter: 1000
         }
       });
 
