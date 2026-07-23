@@ -141,10 +141,13 @@ export default function AnalyticsTab() {
       return await toPng(elem, {
         cacheBust: true,
         backgroundColor: "#ffffff",
-        quality: 0.9,
-        pixelRatio: 1.5,
+        quality: 0.95,
+        pixelRatio: 2,
         filter: (node) => {
-          if (node instanceof HTMLElement && node.classList.contains("leaflet-control-container")) return false;
+          if (node instanceof HTMLElement) {
+            if (node.tagName === "BUTTON" || node.getAttribute("role") === "button") return false;
+            if (node.classList.contains("leaflet-control-container")) return false;
+          }
           return true;
         }
       });

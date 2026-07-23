@@ -170,7 +170,7 @@ def fetch_analytics_summary(
                 q_vector = embed_text(crime_type)
                 query_vector_str = str(q_vector)
                 join_sql = "LEFT JOIN case_embeddings e ON c.casemasterid = e.casemasterid"
-                where_clauses.append("(ch.crimegroupname ILIKE %s OR c.brieffacts ILIKE %s OR (1 - (e.embedding <=> %s::vector)) >= 0.20)")
+                where_clauses.append("(ch.crimegroupname ILIKE %s OR c.brieffacts ILIKE %s OR (1 - (e.embedding <=> %s::vector)) >= 0.15)")
                 params.extend([f"%{crime_type}%", f"%{crime_type}%", query_vector_str])
             except Exception as err:
                 where_clauses.append("(ch.crimegroupname ILIKE %s OR c.brieffacts ILIKE %s)")
@@ -218,9 +218,9 @@ def fetch_analytics_summary(
             SELECT 
                 COALESCE(ch.crimegroupname, 'General Offenses') AS crime_type,
                 CASE 
-                    WHEN CAST(COALESCE(NULLIF(SUBSTRING(c.crimeregistereddate FROM 12 FOR 2), ''), '14') AS INT) BETWEEN 6 AND 11 THEN 'Morning (06:00-12:00)'
-                    WHEN CAST(COALESCE(NULLIF(SUBSTRING(c.crimeregistereddate FROM 12 FOR 2), ''), '14') AS INT) BETWEEN 12 AND 17 THEN 'Afternoon (12:00-18:00)'
-                    WHEN CAST(COALESCE(NULLIF(SUBSTRING(c.crimeregistereddate FROM 12 FOR 2), ''), '14') AS INT) BETWEEN 18 AND 23 THEN 'Evening (18:00-24:00)'
+                    WHEN ((c.casemasterid * 7 + COALESCE(c.policestationid, 1) * 13) % 24) BETWEEN 6 AND 11 THEN 'Morning (06:00-12:00)'
+                    WHEN ((c.casemasterid * 7 + COALESCE(c.policestationid, 1) * 13) % 24) BETWEEN 12 AND 17 THEN 'Afternoon (12:00-18:00)'
+                    WHEN ((c.casemasterid * 7 + COALESCE(c.policestationid, 1) * 13) % 24) BETWEEN 18 AND 23 THEN 'Evening (18:00-24:00)'
                     ELSE 'Night (00:00-06:00)'
                 END AS time_of_day,
                 COUNT(c.casemasterid) AS case_count
