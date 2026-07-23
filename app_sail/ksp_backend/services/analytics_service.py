@@ -358,7 +358,7 @@ def fetch_analytics_summary(
                 {where_sql}
                 GROUP BY c.casemasterid, c.crimeno, d.districtname, u.unitname, ch.crimegroupname, c.brieffacts, c.latitude, c.longitude, c.gravityoffenceid
             )
-            SELECT * FROM RankedCases WHERE rn <= 10;
+            SELECT * FROM RankedCases WHERE rn <= 30;
         """
         micro_case_rows = execute_query(micro_cases_sql, tuple(params))
         
