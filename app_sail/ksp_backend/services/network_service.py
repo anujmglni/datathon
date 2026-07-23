@@ -56,47 +56,98 @@ def get_network_graph(
         where_clauses.append("d.districtname ILIKE %s")
         params.append(f"%{district}%")
 
+    query_vector_str = None
     if crime_type and crime_type.lower() != "all":
-        where_clauses.append("(ch.crimegroupname ILIKE %s OR c.brieffacts ILIKE %s)")
-        params.extend([f"%{crime_type}%", f"%{crime_type}%"])
+        try:
+            from services.embed_cases import embed_text
+            q_vector = embed_text(crime_type)
+            query_vector_str = str(q_vector)
+        except Exception as err:
+            logger.debug(f"Embedding query text fallback in network service: {err}")
 
-    # Date range relative to max registration date in dataset
-    if date_range == "30":
-        where_clauses.append("c.crimeregistereddate::date >= (SELECT MAX(crimeregistereddate::date) - INTERVAL '30 days' FROM casemaster)")
-    elif date_range == "90":
-        where_clauses.append("c.crimeregistereddate::date >= (SELECT MAX(crimeregistereddate::date) - INTERVAL '90 days' FROM casemaster)")
-    elif date_range == "365":
-        where_clauses.append("c.crimeregistereddate::date >= (SELECT MAX(crimeregistereddate::date) - INTERVAL '365 days' FROM casemaster)")
-    elif date_range == "custom" and start_date and end_date:
-        where_clauses.append("c.crimeregistereddate::date BETWEEN %s::date AND %s::date")
-        params.extend([start_date, end_date])
-    # default fallback to 90 days if unspecified or invalid
-    elif date_range not in ["all", "365", "30", "90"]:
-        where_clauses.append("c.crimeregistereddate::date >= (SELECT MAX(crimeregistereddate::date) - INTERVAL '90 days' FROM casemaster)")
+    # Build SQL parameters in exact order
+    if query_vector_str:
+        vec_where_clauses = ["1=1"]
+        vec_params = []
 
+        if district and district.lower() != "all":
+            vec_where_clauses.append("d.districtname ILIKE %s")
+            vec_params.append(f"%{district}%")
 
-    where_sql = " AND ".join(where_clauses)
+        vec_where_clauses.append("(ch.crimegroupname ILIKE %s OR c.brieffacts ILIKE %s OR (1 - (e.embedding <=> %s::vector)) >= 0.20)")
+        vec_params.extend([f"%{crime_type}%", f"%{crime_type}%", query_vector_str])
 
-    # Fetch matching CaseMaster IDs
-    cases_sql = f"""
-        SELECT 
-            c.casemasterid AS CaseMasterID,
-            c.crimeno AS CrimeNo,
-            c.crimeregistereddate AS CrimeRegisteredDate,
-            c.policestationid AS PoliceStationID,
-            u.unitname AS StationName,
-            d.districtname AS DistrictName,
-            ch.crimegroupname AS CrimeGroupName
-        FROM casemaster c
-        LEFT JOIN unit u ON c.policestationid = u.unitid
-        LEFT JOIN district d ON u.districtid = d.districtid
-        LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
-        WHERE {where_sql}
-        ORDER BY c.casemasterid DESC
-        LIMIT 1500;
-    """
+        if date_range == "30":
+            vec_where_clauses.append("c.crimeregistereddate::date >= (SELECT MAX(crimeregistereddate::date) - INTERVAL '30 days' FROM casemaster)")
+        elif date_range == "90":
+            vec_where_clauses.append("c.crimeregistereddate::date >= (SELECT MAX(crimeregistereddate::date) - INTERVAL '90 days' FROM casemaster)")
+        elif date_range == "365":
+            vec_where_clauses.append("c.crimeregistereddate::date >= (SELECT MAX(crimeregistereddate::date) - INTERVAL '365 days' FROM casemaster)")
+        elif date_range == "custom" and start_date and end_date:
+            vec_where_clauses.append("c.crimeregistereddate::date BETWEEN %s::date AND %s::date")
+            vec_params.extend([start_date, end_date])
+        elif date_range not in ["all", "365", "30", "90"]:
+            vec_where_clauses.append("c.crimeregistereddate::date >= (SELECT MAX(crimeregistereddate::date) - INTERVAL '90 days' FROM casemaster)")
 
-    filtered_cases = execute_query(cases_sql, tuple(params) if params else ())
+        where_sql = " AND ".join(vec_where_clauses)
+
+        cases_sql = f"""
+            SELECT 
+                c.casemasterid AS CaseMasterID,
+                c.crimeno AS CrimeNo,
+                c.crimeregistereddate AS CrimeRegisteredDate,
+                c.policestationid AS PoliceStationID,
+                u.unitname AS StationName,
+                d.districtname AS DistrictName,
+                ch.crimegroupname AS CrimeGroupName,
+                1 - (e.embedding <=> %s::vector) AS similarity_score
+            FROM casemaster c
+            JOIN case_embeddings e ON c.casemasterid = e.casemasterid
+            LEFT JOIN unit u ON c.policestationid = u.unitid
+            LEFT JOIN district d ON u.districtid = d.districtid
+            LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
+            WHERE {where_sql}
+            ORDER BY e.embedding <=> %s::vector ASC, c.casemasterid DESC
+            LIMIT 1500;
+        """
+        full_params = [query_vector_str] + vec_params + [query_vector_str]
+        filtered_cases = execute_query(cases_sql, tuple(full_params))
+    else:
+        where_clauses = ["1=1"]
+        params = []
+        if district and district.lower() != "all":
+            where_clauses.append("d.districtname ILIKE %s")
+            params.append(f"%{district}%")
+
+        if date_range == "30":
+            where_clauses.append("c.crimeregistereddate::date >= (SELECT MAX(crimeregistereddate::date) - INTERVAL '30 days' FROM casemaster)")
+        elif date_range == "90":
+            where_clauses.append("c.crimeregistereddate::date >= (SELECT MAX(crimeregistereddate::date) - INTERVAL '90 days' FROM casemaster)")
+        elif date_range == "365":
+            where_clauses.append("c.crimeregistereddate::date >= (SELECT MAX(crimeregistereddate::date) - INTERVAL '365 days' FROM casemaster)")
+        elif date_range == "custom" and start_date and end_date:
+            where_clauses.append("c.crimeregistereddate::date BETWEEN %s::date AND %s::date")
+            params.extend([start_date, end_date])
+
+        where_sql = " AND ".join(where_clauses)
+        cases_sql = f"""
+            SELECT 
+                c.casemasterid AS CaseMasterID,
+                c.crimeno AS CrimeNo,
+                c.crimeregistereddate AS CrimeRegisteredDate,
+                c.policestationid AS PoliceStationID,
+                u.unitname AS StationName,
+                d.districtname AS DistrictName,
+                ch.crimegroupname AS CrimeGroupName
+            FROM casemaster c
+            LEFT JOIN unit u ON c.policestationid = u.unitid
+            LEFT JOIN district d ON u.districtid = d.districtid
+            LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
+            WHERE {where_sql}
+            ORDER BY c.casemasterid DESC
+            LIMIT 1500;
+        """
+        filtered_cases = execute_query(cases_sql, tuple(params) if params else ())
     if not filtered_cases:
         return {
             "total_nodes_before_cap": 0,
@@ -420,6 +471,57 @@ def get_network_graph(
                             }
                         raw_edges[edge_id]["weight"] += 1
                         raw_edges[edge_id]["cases"].add(cid)
+
+    # 5. Semantic Modus Operandi Link (pgvector similarity between cases of different accused)
+    if "accused" in node_types and case_id_tuples:
+        try:
+            mo_sql = """
+                SELECT 
+                    e1.casemasterid AS case1,
+                    e2.casemasterid AS case2,
+                    1 - (e1.embedding <=> e2.embedding) AS sim
+                FROM case_embeddings e1
+                JOIN case_embeddings e2 ON e1.casemasterid < e2.casemasterid
+                WHERE e1.casemasterid IN %s 
+                  AND e2.casemasterid IN %s
+                  AND (1 - (e1.embedding <=> e2.embedding)) >= 0.65
+                LIMIT 50;
+            """
+            mo_rows = execute_query(mo_sql, (case_id_tuples, case_id_tuples))
+            
+            case_to_acc_map = {}
+            for r in accused_rows:
+                cid = r.get("CaseMasterID") or r.get("casemasterid")
+                aid = r.get("AccusedMasterID") or r.get("accusedmasterid")
+                if cid and aid:
+                    case_to_acc_map.setdefault(cid, set()).add(aid)
+
+            for r in mo_rows:
+                c1 = r.get("case1")
+                c2 = r.get("case2")
+                sim = float(r.get("sim") or 0.0)
+                
+                accs1 = case_to_acc_map.get(c1, set())
+                accs2 = case_to_acc_map.get(c2, set())
+                
+                for a1 in accs1:
+                    for a2 in accs2:
+                        if a1 != a2:
+                            src, tgt = (f"accused_{a1}", f"accused_{a2}") if a1 < a2 else (f"accused_{a2}", f"accused_{a1}")
+                            if src in nodes_dict and tgt in nodes_dict:
+                                edge_id = f"e_mo_{src}_{tgt}"
+                                if edge_id not in raw_edges:
+                                    raw_edges[edge_id] = {
+                                        "id": edge_id,
+                                        "source": src,
+                                        "target": tgt,
+                                        "weight": 1,
+                                        "relation": f"Semantic Modus Operandi Link ({round(sim, 2)*100:.0f}% Similarity)",
+                                        "cases": {c1, c2},
+                                        "evidence_type": "VectorCosineSimilarity"
+                                    }
+        except Exception as mo_err:
+            logger.debug(f"Semantic MO Link generation skipped: {mo_err}")
 
 
     # --- FILTER EDGES BY MIN_LINK_STRENGTH ---
