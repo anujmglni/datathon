@@ -74,7 +74,29 @@ def get_connection():
     pool = get_pg_pool()
     if pool:
         conn = pool.getconn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS case_embeddings (
+                        id SERIAL PRIMARY KEY,
+                        casemasterid INT UNIQUE REFERENCES casemaster(casemasterid),
+                        source_field TEXT DEFAULT 'brieffacts',
+                        embedding VECTOR(384),
+                        created_at BIGINT
+                    );
+                """)
+                cur.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_case_embeddings_vector 
+                    ON case_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+                """)
+                conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.debug(f"PostgreSQL pgvector setup log: {e}")
         return conn, "postgresql"
+
+
     
     # Fallback SQLite for seamless local testing without Postgres daemon
     import sqlite3
@@ -82,7 +104,7 @@ def get_connection():
     conn = sqlite3.connect(sqlite_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     
-    # Ensure AuditLog table exists in SQLite
+    # Ensure AuditLog and case_embeddings tables exist in SQLite
     conn.execute("""
         CREATE TABLE IF NOT EXISTS AuditLog (
             LogID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,14 +116,34 @@ def get_connection():
             Timestamp INTEGER
         );
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS case_embeddings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            casemasterid INTEGER UNIQUE,
+            source_field TEXT DEFAULT 'brieffacts',
+            embedding_json TEXT,
+            created_at INTEGER
+        );
+    """)
     conn.commit()
     return conn, "sqlite"
 
+
 def release_connection(conn, db_type):
     if db_type == "postgresql" and _pg_pool:
-        _pg_pool.putconn(conn)
+        try:
+            _pg_pool.putconn(conn)
+        except Exception:
+            try:
+                conn.close()
+            except Exception:
+                pass
     elif db_type == "sqlite":
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
+
 
 def execute_query(sql_query: str, params: tuple = ()) -> list[dict]:
     """
