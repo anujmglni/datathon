@@ -27,10 +27,14 @@ dist/
 build/
 .next/
 
-# Generated reports
+# Generated reports & context archives
 app_sail/ksp_backend/static/reports/
-
 synthetic_data/
 claude.pdf
 synthetic_data.zip
+files.zip
+ksp_code_context.zip
+ksp_logo.png
+*.zip
+*.png
 tests/
