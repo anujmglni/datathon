@@ -615,10 +615,13 @@ export default function AnalyticsTab() {
           {/* SECTION 2: CENTER OF THE ANALYTICS TAB PAGE — NDAP KARNATAKA LEAFLET GIS MAP STACK (IN THE MIDDLE) */}
           <KarnatakaLeafletMap
             nodes={mapNodes}
+            individualCases={payload.choropleth_district_map?.individual_cases || []}
             links={mapLinks}
+            localLinks={payload.choropleth_district_map?.local_case_links || []}
             description={payload.choropleth_district_map?.description}
             howToRead={payload.choropleth_district_map?.how_to_read}
           />
+
 
           {/* SECTION 3: BOTTOM 3 CHARTS (DONUT, FINANCIAL SUMMARY, SOCIOLOGICAL SCATTER) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

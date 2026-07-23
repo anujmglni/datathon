@@ -136,9 +136,12 @@ export interface ZiaOcrResponse {
 export interface AnalyticsChartBlock<T = any> {
   data: T[];
   links?: any[];
+  individual_cases?: any[];
+  local_case_links?: any[];
   description: string;
   how_to_read?: string;
 }
+
 
 
 export interface AnalyticsResponsePayload {
