@@ -175,8 +175,6 @@ def fetch_analytics_summary(
             where_clauses.append("c.crimeregistereddate >= '2025-01-01'")
         elif date_range == "90":
             where_clauses.append("c.crimeregistereddate >= '2024-01-01'")
-        elif date_range == "365":
-            where_clauses.append("c.crimeregistereddate >= '2020-01-01'")
 
         where_sql = " WHERE " + " AND ".join(where_clauses)
 
