@@ -162,19 +162,10 @@ def fetch_analytics_summary(
             where_clauses.append("(d.districtname ILIKE %s OR u.unitname ILIKE %s)")
             params.extend([f"%{district}%", f"%{district}%"])
 
-        query_vector_str = None
-        join_sql = ""
+        join_sql = "LEFT JOIN case_embeddings e ON c.casemasterid = e.casemasterid"
         if crime_type and crime_type.lower() != "all":
-            try:
-                from services.embed_cases import embed_text
-                q_vector = embed_text(crime_type)
-                query_vector_str = str(q_vector)
-                join_sql = "LEFT JOIN case_embeddings e ON c.casemasterid = e.casemasterid"
-                where_clauses.append("(ch.crimegroupname ILIKE %s OR c.brieffacts ILIKE %s OR (1 - (e.embedding <=> %s::vector)) >= 0.15)")
-                params.extend([f"%{crime_type}%", f"%{crime_type}%", query_vector_str])
-            except Exception as err:
-                where_clauses.append("(ch.crimegroupname ILIKE %s OR c.brieffacts ILIKE %s)")
-                params.extend([f"%{crime_type}%", f"%{crime_type}%"])
+            where_clauses.append("(ch.crimegroupname ILIKE %s OR c.brieffacts ILIKE %s)")
+            params.extend([f"%{crime_type}%", f"%{crime_type}%"])
 
         if selected_year and selected_year.lower() != "all":
             where_clauses.append("c.crimeregistereddate LIKE %s")
