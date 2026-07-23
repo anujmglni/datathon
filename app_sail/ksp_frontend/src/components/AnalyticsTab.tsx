@@ -387,7 +387,7 @@ export default function AnalyticsTab() {
           <div className="flex items-center gap-1.5 text-xs">
             <label className="font-semibold text-slate-700">Year:</label>
             <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
-              {["all", "2026", "2025", "2024", "2023", "2022"].map((yr) => (
+              {["all", "2025", "2024", "2023", "2022", "2021", "2020", "2019"].map((yr) => (
                 <button
                   key={yr}
                   onClick={() => setSelectedYear(yr)}
