@@ -3,6 +3,7 @@ RAG Response & Executive Intelligence Synthesizer for KSP Platform.
 Translates retrieved CaseMaster rows and vector similarity matches into
 highly targeted, specific police briefings detailing exact crime facts,
 stolen items, vehicle models, fraud amounts, dates, and locations.
+Provider Chain: Groq Llama 3.3 70B (Primary) → Catalyst QuickML GLM-4.7-Flash (Fallback) → Anthropic → Gemini.
 """
 
 import os
@@ -51,6 +52,41 @@ CRITICAL RESPONSE RULES:
    - **Operational Recommendations** (Actionable law enforcement steps)."""
 
 
+def _call_catalyst_quickml_glm(prompt: str) -> str:
+    """Calls Catalyst QuickML GLM-4.7-Flash API endpoint if configured."""
+    auth_token = os.environ.get("CATALYST_AUTH_TOKEN")
+    if not auth_token:
+        return None
+
+    quickml_url = os.environ.get(
+        "CATALYST_QUICKML_URL",
+        "https://api.catalyst.zoho.in/quickml/v1/project/45688000000013023/rag/answer"
+    )
+    org_id = os.environ.get("CATALYST_ORG_ID", "60079108671")
+
+    headers = {
+        "CATALYST-ORG": org_id,
+        "Authorization": f"Zoho-oauthtoken {auth_token}",
+        "Content-Type": "application/json"
+    }
+
+    try:
+        t0 = time.time()
+        logger.debug("Synthesizing RAG briefing via Catalyst QuickML GLM-4.7-Flash...")
+        res = requests.post(quickml_url, json={"question": prompt}, headers=headers, timeout=8)
+        if res.status_code == 200:
+            resp_data = res.json()
+            answer = resp_data.get("answer") or resp_data.get("response") or resp_data.get("output")
+            if answer:
+                elapsed = round(time.time() - t0, 3)
+                logger.debug(f"RAG Briefing generated in {elapsed}s via Catalyst QuickML GLM-4.7-Flash")
+                return answer
+    except Exception as e:
+        logger.debug(f"Catalyst QuickML GLM-4.7-Flash API call fallback: {e}")
+
+    return None
+
+
 def synthesize_forecasting_response(user_query: str, data: list, user_role: str = "Analyst") -> str:
     """Generates a direct, to-the-point predictive forecast briefing with zero preamble."""
     dist_counts = {}
@@ -78,6 +114,7 @@ CRITICAL RESPONSE RULES:
 3. Paragraph 1: State the prediction directly with quantitative trend analysis and risk drivers.
 4. Paragraph 2: List 3 actionable, targeted preventive measures for law enforcement."""
 
+    # 1. Try Groq Primary
     groq_key = os.environ.get("GROQ_API_KEY")
     if groq_key:
         try:
@@ -93,6 +130,11 @@ CRITICAL RESPONSE RULES:
         except Exception as e:
             logger.debug(f"Groq forecasting fallback: {e}")
 
+    # 2. Try Catalyst QuickML GLM-4.7-Flash Fallback
+    quickml_resp = _call_catalyst_quickml_glm(prompt)
+    if quickml_resp:
+        return quickml_resp
+
     return (
         f"**{top_district}** is projected to experience the highest surge in Investment Fraud next quarter, driven by a high concentration of digital cyber-fraud complaints ({case_count} registered cases) and financial losses totaling ₹{total_fraud:,.2f}.\n\n"
         f"**Operational Prevention Measures:**\n"
@@ -105,7 +147,7 @@ CRITICAL RESPONSE RULES:
 def synthesize_rag_response(user_query: str, intent: str, data: list, user_role: str = "Analyst") -> str:
     """
     Synthesizes retrieved database records / RAG context into a targeted natural language briefing.
-    Provider chain: Groq → Anthropic → Gemini → Native Specific Case Summary engine.
+    Provider chain: Groq Llama 3.3 70B (Primary) → Catalyst QuickML GLM-4.7-Flash (Fallback) → Anthropic → Gemini → Native Fallback.
     """
     if intent == "FORECASTING" or any(w in user_query.lower() for w in ["predict", "forecast", "next quarter", "future"]):
         return synthesize_forecasting_response(user_query, data or [], user_role)
@@ -132,7 +174,7 @@ def synthesize_rag_response(user_query: str, intent: str, data: list, user_role:
     dist_str = ", ".join(list(districts)) if districts else "Karnataka State Police Jurisdiction"
     prompt = _build_synthesis_prompt(user_query, user_role, dist_str, data)
 
-    # 1. Try Groq Primary
+    # 1. Try Groq Primary (70B Parameter Frontier Quality)
     groq_key = os.environ.get("GROQ_API_KEY")
     if groq_key:
         try:
@@ -152,7 +194,12 @@ def synthesize_rag_response(user_query: str, intent: str, data: list, user_role:
         except Exception as e:
             logger.debug(f"Groq API call fallback: {e}")
 
-    # 2. Try Anthropic Secondary
+    # 2. Try Catalyst QuickML GLM-4.7-Flash Fallback
+    quickml_resp = _call_catalyst_quickml_glm(prompt)
+    if quickml_resp:
+        return quickml_resp
+
+    # 3. Try Anthropic Secondary
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
     if anthropic_key:
         try:
@@ -167,7 +214,7 @@ def synthesize_rag_response(user_query: str, intent: str, data: list, user_role:
         except Exception as e:
             logger.debug(f"Anthropic API call fallback: {e}")
 
-    # 3. Native Specific Case Summary Engine (Zero-Cost Targeted Fallback)
+    # 4. Native Specific Case Summary Engine (Zero-Cost Targeted Fallback)
     lines = []
     lines.append(f"### 📋 Targeted Crime Intelligence Briefing\n")
     lines.append(f"Retrieved **{num_records} matching case file(s)** across **{dist_str}** for query: *\"{user_query}\"*.\n")
