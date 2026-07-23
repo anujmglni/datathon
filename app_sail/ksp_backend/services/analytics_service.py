@@ -1,6 +1,6 @@
 """
 Crime Analytics & Sociological Crime Insights Service.
-Provides high-performance GROUP BY SQL aggregations, Karnataka macro district nodes, micro individual case nodes across ALL 38 districts, cross-district network links, and local case links.
+Provides high-performance GROUP BY SQL aggregations, Karnataka macro district nodes, micro individual case nodes with database lat/lng coordinates, cross-district network links, and local case links.
 """
 
 from typing import Dict, Any, List
@@ -25,7 +25,7 @@ DISTRICT_SOCIO_ECONOMIC = {
     "K.Railways": {"literacy_rate": 78.5, "urbanization_pct": 60.0, "unemployment_rate": 4.5},
 }
 
-# CENTROID COORDINATES & METADATA FOR ALL 38 KARNATAKA DISTRICTS
+# CENTROID FALLBACK METADATA FOR ALL 38 KARNATAKA DISTRICTS
 DISTRICT_MAP_PINS = {
     "Bagalkot": {"lat": 16.1853, "lng": 75.6961, "risk_type": "standard", "io": "Inspector Harish"},
     "Ballari": {"lat": 15.1394, "lng": 76.9214, "risk_type": "severity", "io": "Inspector Advika"},
@@ -151,7 +151,7 @@ def fetch_analytics_summary(
 ) -> Dict[str, Any]:
     """
     Returns pre-aggregated dataset for all 8 required analytics charts along with
-    dynamically generated plain-language summaries, Karnataka macro district nodes, and micro individual case nodes across all 38 districts.
+    dynamically generated plain-language summaries, Karnataka macro district nodes (AVG lat/lng from DB), and micro individual case nodes (Exact lat/lng from DB).
     """
     try:
         # Build SQL Filter Clauses
@@ -278,11 +278,13 @@ def fetch_analytics_summary(
             if top_bar_count else "This bar chart ranks top districts by volume and gravity-weighted severity score."
         )
 
-        # --- 5. CHOROPLETH / KARNATAKA MAP MACRO DISTRICT NODES & MICRO INDIVIDUAL CASE NODES ---
+        # --- 5. CHOROPLETH / KARNATAKA MAP MACRO DISTRICT NODES & MICRO INDIVIDUAL CASE NODES USING REAL DB LAT/LNG ---
         macro_sql = f"""
             SELECT 
                 COALESCE(d.districtname, 'Bengaluru City') AS district_name,
                 COUNT(c.casemasterid) AS case_count,
+                AVG(c.latitude) AS avg_lat,
+                AVG(c.longitude) AS avg_lng,
                 MAX(COALESCE(ch.crimegroupname, 'Cyber & Financial Crime')) AS top_crime_type,
                 MAX(COALESCE(u.unitname, 'Station Division')) AS primary_station,
                 MAX(COALESCE(c.brieffacts, 'Investigation active under CCTNS monitoring.')) AS sample_facts
@@ -301,6 +303,11 @@ def fetch_analytics_summary(
         for r in macro_rows:
             d_name = r.get("district_name")
             pin = DISTRICT_MAP_PINS.get(d_name, {"lat": 12.9716, "lng": 77.5946, "risk_type": "standard", "io": "Inspector Harish"})
+            
+            # Use actual DB AVG latitude/longitude if available, else fallback pin
+            db_lat = float(r.get("avg_lat")) if r.get("avg_lat") is not None else pin.get("lat", 12.9716)
+            db_lng = float(r.get("avg_lng")) if r.get("avg_lng") is not None else pin.get("lng", 77.5946)
+
             district_nodes.append({
                 "id": f"node_{d_name.lower().replace(' ', '_')}",
                 "district_name": d_name,
@@ -310,11 +317,11 @@ def fetch_analytics_summary(
                 "sample_facts": r.get("sample_facts", "")[:120] + "...",
                 "risk_type": pin.get("risk_type", "standard"),
                 "investigating_officer": pin.get("io", "Inspector Harish"),
-                "lat": pin.get("lat", 12.9716),
-                "lng": pin.get("lng", 77.5946)
+                "lat": db_lat,
+                "lng": db_lng
             })
 
-        # FETCH MICRO INDIVIDUAL CASES ACROSS ALL 38 DISTRICTS (Ranked up to 6 cases per district)
+        # FETCH MICRO INDIVIDUAL CASES ACROSS ALL 38 DISTRICTS USING EXACT REAL LATITUDE & LONGITUDE FROM DB
         micro_cases_sql = f"""
             WITH RankedCases AS (
                 SELECT 
@@ -324,6 +331,8 @@ def fetch_analytics_summary(
                     COALESCE(u.unitname, 'Town PS Division') AS station_name,
                     COALESCE(ch.crimegroupname, 'Financial Fraud') AS crime_type,
                     COALESCE(c.brieffacts, 'Case under active CCTNS investigation.') AS brief_facts,
+                    c.latitude,
+                    c.longitude,
                     c.gravityoffenceid,
                     ROW_NUMBER() OVER (PARTITION BY COALESCE(d.districtname, 'Bengaluru City') ORDER BY c.casemasterid) as rn
                 FROM casemaster c
@@ -332,22 +341,20 @@ def fetch_analytics_summary(
                 LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
                 {where_sql}
             )
-            SELECT * FROM RankedCases WHERE rn <= 6;
+            SELECT * FROM RankedCases WHERE rn <= 10;
         """
         micro_case_rows = execute_query(micro_cases_sql, tuple(params))
         
         individual_case_nodes = []
         local_case_links = []
 
-        import math
         for idx, row in enumerate(micro_case_rows):
             d_name = row.get("district_name")
             base_pin = DISTRICT_MAP_PINS.get(d_name, {"lat": 12.9716, "lng": 77.5946, "io": "Inspector Harish"})
-            # Offset lat/lng evenly around district centroid pin
-            angle = (idx % 6) * (math.pi / 3)
-            dist_offset = 0.05 + ((idx % 3) * 0.03)
-            c_lat = base_pin["lat"] + dist_offset * math.sin(angle)
-            c_lng = base_pin["lng"] + dist_offset * math.cos(angle)
+            
+            # Use actual DB latitude and longitude for exact real-world geographical placement
+            c_lat = float(row.get("latitude")) if row.get("latitude") is not None else base_pin["lat"]
+            c_lng = float(row.get("longitude")) if row.get("longitude") is not None else base_pin["lng"]
 
             g_id = row.get("gravityoffenceid", 1)
             risk = "severity" if g_id and g_id > 2 else ("hotspot" if "Financial" in row.get("crime_type", "") or "Cyber" in row.get("crime_type", "") else "standard")
@@ -367,7 +374,7 @@ def fetch_analytics_summary(
             }
             individual_case_nodes.append(case_node)
 
-            # Create local intra-district network links between nearby cases in same district
+            # Create local intra-district network links between real cases in same district
             if idx > 0 and idx % 2 == 1:
                 prev_case = individual_case_nodes[idx - 1]
                 if prev_case["district_name"] == d_name:
