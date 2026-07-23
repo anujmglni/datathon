@@ -1,6 +1,6 @@
 """
 Crime Analytics & Sociological Crime Insights Service.
-Provides high-performance GROUP BY SQL aggregations, Karnataka macro district nodes, micro individual case nodes with database lat/lng coordinates, cross-district network links, and local case links.
+Provides high-performance GROUP BY SQL aggregations, Karnataka macro district nodes, micro individual case nodes with database accused names and FIR numbers, cross-district network links, and local case links.
 """
 
 from typing import Dict, Any, List
@@ -72,7 +72,7 @@ INTER_DISTRICT_LINKS = [
         "source": "Bengaluru City",
         "target": "Mysuru City",
         "relation": "Cross-District Financial Cyber Proceeds Transfer",
-        "shared_accused": "Accused #4012 (Rajesh V.)",
+        "shared_accused": "Accused #4012 (Rajesh V. / Manbir Sarma)",
         "transfer_amount_inr": 8500000,
         "linked_firs": "FIR #104/2025 (Bengaluru Cyber PS) & FIR #88/2025 (Mysuru City PS)",
         "directive": "Execute CrPC Sec 91 Bank Proceeds Audit across linked accounts."
@@ -81,7 +81,7 @@ INTER_DISTRICT_LINKS = [
         "source": "Bengaluru City",
         "target": "Mangaluru City",
         "relation": "Repeat Offender Syndicate Network Link",
-        "shared_accused": "Accused #11 (Anuj M. Syndicate)",
+        "shared_accused": "Accused #11 (Anuj M. Syndicate / Hiral Deshmukh)",
         "transfer_amount_inr": 12400000,
         "linked_firs": "FIR #312/2024 (East Zone PS) & FIR #45/2025 (Mangaluru North PS)",
         "directive": "Flag offender ID in State CCTNS database for real-time tracking."
@@ -90,7 +90,7 @@ INTER_DISTRICT_LINKS = [
         "source": "Belagavi City",
         "target": "Dharwad",
         "relation": "Inter-Jurisdictional Heinous Theft MO Match",
-        "shared_accused": "Accused #908 (Vikram S.)",
+        "shared_accused": "Accused #908 (Vikram S. / Ekapad Khurana)",
         "transfer_amount_inr": 3200000,
         "linked_firs": "FIR #19/2025 (Belagavi Sub-Division) & FIR #201/2024 (Dharwad Town PS)",
         "directive": "Issue CrPC Sec 70 Non-Bailable Arrest Warrant."
@@ -99,7 +99,7 @@ INTER_DISTRICT_LINKS = [
         "source": "Kalaburgi City",
         "target": "Ballari",
         "relation": "Cross-District Organised Crime Syndicate",
-        "shared_accused": "Accused #771 (Ramesh M. Gang)",
+        "shared_accused": "Accused #771 (Ramesh M. Gang / Prisha Trivedi)",
         "transfer_amount_inr": 5600000,
         "linked_firs": "FIR #88/2024 (Kalaburgi PS) & FIR #144/2025 (Ballari Rural PS)",
         "directive": "Initiate KPM Sec 1205 Joint Inter-District Intelligence Operation."
@@ -108,7 +108,7 @@ INTER_DISTRICT_LINKS = [
         "source": "Udupi",
         "target": "Dakshina Kannada",
         "relation": "Coastal Fraud Account Link",
-        "shared_accused": "Accused #552 (Suresh K.)",
+        "shared_accused": "Accused #552 (Suresh K. / Vrinda Mand)",
         "transfer_amount_inr": 4100000,
         "linked_firs": "FIR #77/2025 (Udupi Cyber PS) & FIR #99/2025 (Mangaluru Port PS)",
         "directive": "Audit linked bank account last4 #9482 under CrPC Sec 102."
@@ -117,7 +117,7 @@ INTER_DISTRICT_LINKS = [
         "source": "Shimoga",
         "target": "Chikkamagaluru",
         "relation": "Malnad Highway Property Theft MO Linkage",
-        "shared_accused": "Accused #319 (Ganesh P.)",
+        "shared_accused": "Accused #319 (Ganesh P. / Watika Deep)",
         "transfer_amount_inr": 1800000,
         "linked_firs": "FIR #55/2025 (Shimoga Town PS) & FIR #12/2025 (Chikkamagaluru Rural PS)",
         "directive": "Coordinate highway check-posts under KPM Sec 1201."
@@ -126,7 +126,7 @@ INTER_DISTRICT_LINKS = [
         "source": "Tumakuru",
         "target": "Bengaluru City",
         "relation": "Suburban Investment Scam Proceeds Trail",
-        "shared_accused": "Accused #881 (Sunil T.)",
+        "shared_accused": "Accused #881 (Sunil T. / Irya Sarna)",
         "transfer_amount_inr": 6700000,
         "linked_firs": "FIR #202/2024 (Tumakuru Cyber PS) & FIR #401/2024 (Central Cyber PS)",
         "directive": "Freeze linked mule accounts under CrPC Sec 102."
@@ -135,7 +135,7 @@ INTER_DISTRICT_LINKS = [
         "source": "Kolar",
         "target": "Bengaluru City",
         "relation": "Border Smuggling & Robbery Link",
-        "shared_accused": "Accused #614 (Venkatesh K.)",
+        "shared_accused": "Accused #614 (Venkatesh K. / Om Rastogi)",
         "transfer_amount_inr": 2900000,
         "linked_firs": "FIR #33/2025 (Kolar Town PS) & FIR #119/2025 (Whitefield PS)",
         "directive": "Deploy real-time CCTNS border alert."
@@ -151,7 +151,7 @@ def fetch_analytics_summary(
 ) -> Dict[str, Any]:
     """
     Returns pre-aggregated dataset for all 8 required analytics charts along with
-    dynamically generated plain-language summaries, Karnataka macro district nodes (AVG lat/lng from DB), and micro individual case nodes (Exact lat/lng from DB).
+    dynamically generated plain-language summaries, Karnataka macro district nodes, and micro individual case nodes with database accused names.
     """
     try:
         # Build SQL Filter Clauses
@@ -278,7 +278,7 @@ def fetch_analytics_summary(
             if top_bar_count else "This bar chart ranks top districts by volume and gravity-weighted severity score."
         )
 
-        # --- 5. CHOROPLETH / KARNATAKA MAP MACRO DISTRICT NODES & MICRO INDIVIDUAL CASE NODES USING REAL DB LAT/LNG ---
+        # --- 5. CHOROPLETH / KARNATAKA MAP MACRO DISTRICT NODES & MICRO INDIVIDUAL CASE NODES WITH REAL DB ACCUSED NAMES ---
         macro_sql = f"""
             SELECT 
                 COALESCE(d.districtname, 'Bengaluru City') AS district_name,
@@ -304,7 +304,6 @@ def fetch_analytics_summary(
             d_name = r.get("district_name")
             pin = DISTRICT_MAP_PINS.get(d_name, {"lat": 12.9716, "lng": 77.5946, "risk_type": "standard", "io": "Inspector Harish"})
             
-            # Use actual DB AVG latitude/longitude if available, else fallback pin
             db_lat = float(r.get("avg_lat")) if r.get("avg_lat") is not None else pin.get("lat", 12.9716)
             db_lng = float(r.get("avg_lng")) if r.get("avg_lng") is not None else pin.get("lng", 77.5946)
 
@@ -321,7 +320,7 @@ def fetch_analytics_summary(
                 "lng": db_lng
             })
 
-        # FETCH MICRO INDIVIDUAL CASES ACROSS ALL 38 DISTRICTS USING EXACT REAL LATITUDE & LONGITUDE FROM DB
+        # FETCH MICRO INDIVIDUAL CASES WITH REAL ACCUSED NAMES & FIR NUMBERS FROM DB
         micro_cases_sql = f"""
             WITH RankedCases AS (
                 SELECT 
@@ -334,12 +333,15 @@ def fetch_analytics_summary(
                     c.latitude,
                     c.longitude,
                     c.gravityoffenceid,
+                    STRING_AGG(DISTINCT a.accusedname, ', ') AS accused_names,
                     ROW_NUMBER() OVER (PARTITION BY COALESCE(d.districtname, 'Bengaluru City') ORDER BY c.casemasterid) as rn
                 FROM casemaster c
                 LEFT JOIN unit u ON c.policestationid = u.unitid
                 LEFT JOIN district d ON u.districtid = d.districtid
                 LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
+                LEFT JOIN accused a ON c.casemasterid = a.casemasterid
                 {where_sql}
+                GROUP BY c.casemasterid, c.crimeno, d.districtname, u.unitname, ch.crimegroupname, c.brieffacts, c.latitude, c.longitude, c.gravityoffenceid
             )
             SELECT * FROM RankedCases WHERE rn <= 10;
         """
@@ -352,21 +354,24 @@ def fetch_analytics_summary(
             d_name = row.get("district_name")
             base_pin = DISTRICT_MAP_PINS.get(d_name, {"lat": 12.9716, "lng": 77.5946, "io": "Inspector Harish"})
             
-            # Use actual DB latitude and longitude for exact real-world geographical placement
             c_lat = float(row.get("latitude")) if row.get("latitude") is not None else base_pin["lat"]
             c_lng = float(row.get("longitude")) if row.get("longitude") is not None else base_pin["lng"]
 
             g_id = row.get("gravityoffenceid", 1)
             risk = "severity" if g_id and g_id > 2 else ("hotspot" if "Financial" in row.get("crime_type", "") or "Cyber" in row.get("crime_type", "") else "standard")
+            
+            accused_str = row.get("accused_names") or f"Accused #{row.get('casemasterid')}"
 
             case_node = {
                 "id": f"case_{row.get('casemasterid')}",
-                "fir_number": f"FIR #{row.get('crimeno') % 1000}/2025",
+                "casemasterid": row.get("casemasterid"),
+                "fir_number": f"FIR #{row.get('crimeno')}",
                 "district_name": d_name,
                 "station_name": row.get("station_name"),
                 "crime_type": row.get("crime_type"),
                 "brief_facts": row.get("brief_facts", "")[:120] + "...",
                 "risk_type": risk,
+                "accused_names": accused_str,
                 "investigating_officer": base_pin.get("io", "Inspector Harish"),
                 "lat": c_lat,
                 "lng": c_lng,
@@ -385,7 +390,7 @@ def fetch_analytics_summary(
                         "target_label": case_node["fir_number"],
                         "district_name": d_name,
                         "relation": "Intra-District Local Syndicate & MO Linkage",
-                        "shared_accused": f"Accused #{100 + idx} (Local Gang Link)",
+                        "shared_accused": f"{prev_case['accused_names']} ↔ {case_node['accused_names']}",
                         "transfer_amount_inr": 1500000 + idx * 250000,
                         "linked_firs": f"{prev_case['fir_number']} & {case_node['fir_number']} ({d_name})",
                         "directive": "Coordinate local station raid under CrPC Sec 102."
@@ -399,7 +404,6 @@ def fetch_analytics_summary(
             if top_map else "This map displays case nodes across Karnataka districts."
         )
 
-        # Filter inter-district links based on node presence
         active_district_names = set(n["district_name"] for n in district_nodes)
         map_links = [
             link for link in INTER_DISTRICT_LINKS 
@@ -505,7 +509,7 @@ def fetch_analytics_summary(
                 "links": map_links,
                 "local_case_links": local_case_links,
                 "description": map_desc,
-                "how_to_read": "Zoom in or select a district to reveal all individual case nodes & local networks. Hover on dotted lines to view evidence cards."
+                "how_to_read": "Hover over district nodes or dotted lines for district overview & network breakdown. Click on a district node to zoom inside."
             },
             "donut_case_status": {
                 "data": status_rows,
