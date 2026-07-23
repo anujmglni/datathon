@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { fetchAnalyticsSummary, fetchNetworkOptions } from "@/lib/api";
+import { fetchAnalyticsSummary, fetchNetworkOptions, generatePdfReport } from "@/lib/api";
 import { AnalyticsResponsePayload } from "@/lib/types";
 import { toPng } from "html-to-image";
 import {
@@ -130,93 +130,64 @@ export default function AnalyticsTab() {
     }
   };
 
-  // Full Dashboard PDF Export
-  const handleExportFullDashboard = () => {
+  // Full Executive Analytics Dashboard PDF Report Export
+  const handleExportFullDashboard = async () => {
     if (!payload) return;
-    const printWin = window.open("", "_blank");
-    if (!printWin) return;
+    try {
+      const markdown = [
+        "# KARNATAKA STATE POLICE — EXECUTIVE CRIME ANALYTICS & TREND REPORT",
+        `**Generated:** ${new Date().toLocaleString()} | **Jurisdiction:** ${district.toUpperCase()} | **Crime Head:** ${crimeType.toUpperCase()} | **Timeline:** Last ${dateRange} Days`,
+        "---",
+        "",
+        "## 1. EXECUTIVE SUMMARY & KEY STATISTICAL INSIGHTS",
+        `- **Crime Volume Trend:** ${payload.line_crime_trends?.description || 'Data active under CCTNS tracking.'}`,
+        `- **Statutory Gravity Ranking:** ${payload.bar_top_offenses?.description || 'Volume and severity score indexed.'}`,
+        `- **Spatial Hotspot Density:** ${payload.choropleth_district_map?.description || 'District node cluster active.'}`,
+        `- **Case Disposition Status:** ${payload.donut_case_status?.description || 'Disposition tracked across state.'}`,
+        `- **Financial Fraud Recoveries:** ${payload.financial_crime_summary?.description || 'Audit active under CrPC Sec 102.'}`,
+        "",
+        "---",
+        "",
+        "## 2. TOP DISTRICT CRIMINOLOGICAL RANKING (BY VOLUME & GRAVITY)",
+        ...(payload.bar_top_offenses?.data || []).map((d: any, idx: number) => 
+          `${idx + 1}. **${d.label}:** ${d.case_count} Cases Registered | Severity Gravity Score: ${roundVal(d.gravity_score, 1)} pts`
+        ),
+        "",
+        "---",
+        "",
+        "## 3. FINANCIAL CRIME LOSS VS RECOVERY AUDIT",
+        ...(payload.financial_crime_summary?.data || []).map((f: any) => 
+          `- **${f.fraud_type}:** Total Lost ₹${Number(f.total_lost_inr || 0).toLocaleString()} INR | Total Recovered ₹${Number(f.total_recovered_inr || 0).toLocaleString()} INR (${f.transaction_count || 0} Transactions)`
+        ),
+        "",
+        "---",
+        "",
+        "**ISSUING AUTHORITY:**",
+        "Office of the Director General of Police, State Crime Records Bureau (SCRB), Bengaluru, Karnataka"
+      ].join("\n");
 
-    printWin.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Executive Crime Pattern & Sociological Analytics Report</title>
-          <style>
-            body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 30px; color: #0f172a; line-height: 1.4; }
-            .header { border-bottom: 3px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
-            .header h1 { margin: 0; font-size: 22px; color: #1e3a8a; }
-            .header p { margin: 4px 0 0 0; font-size: 12px; color: #475569; }
-            .filter-bar { background: #f1f5f9; padding: 10px 15px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-bottom: 20px; }
-            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-            .card { border: 1px solid #cbd5e1; border-radius: 10px; padding: 15px; background: #ffffff; page-break-inside: avoid; }
-            .card-title { font-size: 14px; font-weight: bold; color: #1e293b; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; }
-            .summary-box { background: #eff6ff; border-left: 3px solid #2563eb; padding: 8px 10px; font-size: 11px; color: #1e40af; margin-top: 10px; border-radius: 0 6px 6px 0; }
-            .footer { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 10px; color: #94a3b8; text-align: center; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Karnataka State Police — Crime Intelligence Analytics Dashboard</h1>
-            <p>Executive Report | Generated: ${new Date().toLocaleString()}</p>
-          </div>
-
-          <div class="filter-bar">
-            Active Parameters — Jurisdiction: ${district.toUpperCase()} | Crime Type: ${crimeType.toUpperCase()} | Year: ${selectedYear.toUpperCase()} | Range: Last ${dateRange} Days
-          </div>
-
-          <div class="grid">
-            <div class="card">
-              <div class="card-title">1. Heatmap — Crime Density (District × Month)</div>
-              <div class="summary-box">${payload.heatmap_district_month?.description}</div>
-            </div>
-
-            <div class="card">
-              <div class="card-title">2. Heatmap — Crime Type × Time of Day</div>
-              <div class="summary-box">${payload.heatmap_crime_timeofday?.description}</div>
-            </div>
-
-            <div class="card">
-              <div class="card-title">3. Line Chart — Crime Trend Over Time</div>
-              <div class="summary-box">${payload.line_crime_trends?.description}</div>
-            </div>
-
-            <div class="card">
-              <div class="card-title">4. Bar Chart — Top Offenses by Volume & Gravity</div>
-              <div class="summary-box">${payload.bar_top_offenses?.description}</div>
-            </div>
-
-            <div class="card" style="grid-column: span 2;">
-              <div class="card-title">Central Karnataka NDAP Leaflet GIS Map & Cross-District Network</div>
-              <div class="summary-box">${payload.choropleth_district_map?.description}</div>
-            </div>
-
-            <div class="card">
-              <div class="card-title">6. Donut Chart — Case Status Breakdown</div>
-              <div class="summary-box">${payload.donut_case_status?.description}</div>
-            </div>
-
-            <div class="card">
-              <div class="card-title">7. Financial Crime Summary (Lost vs Recovered)</div>
-              <div class="summary-box">${payload.financial_crime_summary?.description}</div>
-            </div>
-
-            <div class="card">
-              <div class="card-title">8. Sociological Correlation Scatter Plot</div>
-              <div class="summary-box">${payload.sociological_correlation?.description}</div>
-            </div>
-          </div>
-
-          <div class="footer">
-            Karnataka State Police — SCRB Intelligence Division | Confidential Law Enforcement Report
-          </div>
-          <script>
-            window.onload = function() { window.print(); window.close(); }
-          </script>
-        </body>
-      </html>
-    `);
-    printWin.document.close();
+      const res = await generatePdfReport(`KSP Executive Analytics Briefing - ${district}`, markdown);
+      if (res.download_url) {
+        const pdfRes = await fetch(res.download_url);
+        const blob = await pdfRes.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = res.filename || `ksp_analytics_report_${Date.now()}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      }
+    } catch (e) {
+      console.error("Dashboard PDF export failed:", e);
+    }
   };
+
+  function roundVal(val: any, decimals: number = 1): number {
+    const num = Number(val) || 0;
+    return Number(num.toFixed(decimals));
+  }
 
   // Heatmap 1 Grid data
   const h1Data = payload?.heatmap_district_month?.data || [];

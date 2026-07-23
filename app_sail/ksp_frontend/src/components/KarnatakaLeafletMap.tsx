@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Download, Info, MapPin, Network, ZoomIn, ZoomOut, RotateCcw, Filter, UserCheck, ShieldAlert } from "lucide-react";
+import { toPng } from "html-to-image";
 
 interface NodeData {
   id: string;
@@ -348,26 +349,29 @@ export default function KarnatakaLeafletMap({
     }
   }, [nodes, individualCases, links, localLinks, zoomLevel, selectedDistrict]);
 
-  // Full Export Map View
-  const handleExportMapImage = () => {
+  // Export Map Container directly as PNG Image
+  const handleExportMapImage = async () => {
     const container = mapContainerRef.current;
     if (!container) return;
-    const printWin = window.open("", "_blank");
-    if (!printWin) return;
-    printWin.document.write(`
-      <html>
-        <head><title>Karnataka GIS Map Export</title></head>
-        <body style="font-family:sans-serif; padding:30px;">
-          <h2>Karnataka State Police — Multi-Level GIS & Network Map</h2>
-          <p>Generated: ${new Date().toLocaleString()} | Active Zoom: ${zoomLevel} | District: ${selectedDistrict.toUpperCase()}</p>
-          <div style="border:1px solid #ccc; padding:15px; border-radius:12px;">
-            ${container.outerHTML}
-          </div>
-          <script>window.onload = function() { window.print(); window.close(); }</script>
-        </body>
-      </html>
-    `);
-    printWin.document.close();
+
+    try {
+      const dataUrl = await toPng(container, {
+        cacheBust: true,
+        backgroundColor: "#0f172a",
+        quality: 0.95,
+        pixelRatio: 2,
+        filter: (node) => {
+          if (node instanceof HTMLElement && node.classList.contains("leaflet-control-container")) return false;
+          return true;
+        }
+      });
+      const link = document.createElement("a");
+      link.download = `ksp_karnataka_gis_map_${selectedDistrict.toLowerCase().replace(/[^a-z0-9]/g, "_")}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error("Failed to export map image:", err);
+    }
   };
 
   // Distinct District List for Selection Dropdown
