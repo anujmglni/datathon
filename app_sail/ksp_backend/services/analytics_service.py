@@ -1,6 +1,6 @@
 """
 Crime Analytics & Sociological Crime Insights Service.
-Provides high-performance GROUP BY SQL aggregations, Karnataka macro district nodes, micro individual case nodes, cross-district network links, and local case links.
+Provides high-performance GROUP BY SQL aggregations, Karnataka macro district nodes, micro individual case nodes across ALL 38 districts, cross-district network links, and local case links.
 """
 
 from typing import Dict, Any, List
@@ -9,48 +9,62 @@ from database import execute_query
 
 DISTRICT_SOCIO_ECONOMIC = {
     "Bengaluru City": {"literacy_rate": 88.7, "urbanization_pct": 90.9, "unemployment_rate": 5.4},
-    "Bengaluru": {"literacy_rate": 88.7, "urbanization_pct": 90.9, "unemployment_rate": 5.4},
-    "Mysuru": {"literacy_rate": 72.8, "urbanization_pct": 41.5, "unemployment_rate": 4.8},
+    "Bengaluru District": {"literacy_rate": 88.7, "urbanization_pct": 90.9, "unemployment_rate": 5.4},
     "Mysuru City": {"literacy_rate": 72.8, "urbanization_pct": 41.5, "unemployment_rate": 4.8},
-    "Belagavi": {"literacy_rate": 73.5, "urbanization_pct": 25.3, "unemployment_rate": 4.2},
+    "Mysuru District": {"literacy_rate": 72.8, "urbanization_pct": 41.5, "unemployment_rate": 4.8},
     "Belagavi City": {"literacy_rate": 73.5, "urbanization_pct": 25.3, "unemployment_rate": 4.2},
-    "Kalaburagi": {"literacy_rate": 65.1, "urbanization_pct": 32.6, "unemployment_rate": 6.1},
+    "Belagavi District": {"literacy_rate": 73.5, "urbanization_pct": 25.3, "unemployment_rate": 4.2},
     "Kalaburgi": {"literacy_rate": 65.1, "urbanization_pct": 32.6, "unemployment_rate": 6.1},
+    "Kalaburgi City": {"literacy_rate": 65.1, "urbanization_pct": 32.6, "unemployment_rate": 6.1},
     "Udupi": {"literacy_rate": 86.2, "urbanization_pct": 28.4, "unemployment_rate": 3.9},
     "Chikkamagaluru": {"literacy_rate": 79.2, "urbanization_pct": 19.3, "unemployment_rate": 3.5},
-    "Mangaluru": {"literacy_rate": 88.6, "urbanization_pct": 47.6, "unemployment_rate": 4.1},
+    "Mangaluru City": {"literacy_rate": 88.6, "urbanization_pct": 47.6, "unemployment_rate": 4.1},
     "Dakshina Kannada": {"literacy_rate": 88.6, "urbanization_pct": 47.6, "unemployment_rate": 4.1},
     "Dharwad": {"literacy_rate": 80.0, "urbanization_pct": 56.8, "unemployment_rate": 5.1},
-    "Hubballi-Dharwad": {"literacy_rate": 80.0, "urbanization_pct": 56.8, "unemployment_rate": 5.1},
+    "Hubballi Dharwad": {"literacy_rate": 80.0, "urbanization_pct": 56.8, "unemployment_rate": 5.1},
     "K.Railways": {"literacy_rate": 78.5, "urbanization_pct": 60.0, "unemployment_rate": 4.5},
 }
 
+# CENTROID COORDINATES & METADATA FOR ALL 38 KARNATAKA DISTRICTS
 DISTRICT_MAP_PINS = {
-    "Bengaluru City": {"lat": 12.9716, "lng": 77.5946, "x": 68, "y": 76, "risk_type": "severity", "io": "Inspector Harish"},
-    "Bengaluru Dist": {"lat": 12.9716, "lng": 77.5946, "x": 68, "y": 76, "risk_type": "severity", "io": "Inspector Harish"},
-    "Mysuru": {"lat": 12.2958, "lng": 76.6394, "x": 52, "y": 86, "risk_type": "hotspot", "io": "Inspector Harshil"},
-    "Mysuru City": {"lat": 12.2958, "lng": 76.6394, "x": 52, "y": 86, "risk_type": "hotspot", "io": "Inspector Harshil"},
-    "Mangaluru": {"lat": 12.9141, "lng": 74.8560, "x": 24, "y": 79, "risk_type": "repeat_offender", "io": "Inspector Waida"},
-    "Dakshina Kannada": {"lat": 12.9141, "lng": 74.8560, "x": 24, "y": 79, "risk_type": "repeat_offender", "io": "Inspector Waida"},
-    "Belagavi": {"lat": 15.8497, "lng": 74.5086, "x": 26, "y": 26, "risk_type": "repeat_offender", "io": "Inspector Noah"},
-    "Belagavi City": {"lat": 15.8497, "lng": 74.5086, "x": 26, "y": 26, "risk_type": "repeat_offender", "io": "Inspector Noah"},
-    "Kalaburagi": {"lat": 17.3297, "lng": 76.8343, "x": 65, "y": 14, "risk_type": "severity", "io": "Inspector Devansh"},
-    "Kalaburgi": {"lat": 17.3297, "lng": 76.8343, "x": 65, "y": 14, "risk_type": "severity", "io": "Inspector Devansh"},
-    "Udupi": {"lat": 13.3409, "lng": 74.7421, "x": 22, "y": 68, "risk_type": "hotspot", "io": "Inspector Advika"},
-    "Hubballi-Dharwad": {"lat": 15.3647, "lng": 75.1240, "x": 35, "y": 38, "risk_type": "repeat_offender", "io": "Inspector Harish"},
-    "Dharwad": {"lat": 15.3647, "lng": 75.1240, "x": 35, "y": 38, "risk_type": "repeat_offender", "io": "Inspector Harish"},
-    "Chikkamagaluru": {"lat": 13.3161, "lng": 75.7720, "x": 39, "y": 66, "risk_type": "standard", "io": "Inspector Harshil"},
-    "Hassan": {"lat": 13.0068, "lng": 76.1004, "x": 46, "y": 74, "risk_type": "standard", "io": "Inspector Noah"},
-    "Shivamogga": {"lat": 13.9299, "lng": 75.5681, "x": 37, "y": 54, "risk_type": "hotspot", "io": "Inspector Devansh"},
-    "Shimoga": {"lat": 13.9299, "lng": 75.5681, "x": 37, "y": 54, "risk_type": "hotspot", "io": "Inspector Devansh"},
-    "Davanagere": {"lat": 14.4644, "lng": 75.9218, "x": 45, "y": 47, "risk_type": "standard", "io": "Inspector Waida"},
-    "Ballari": {"lat": 15.1394, "lng": 76.9214, "x": 62, "y": 42, "risk_type": "severity", "io": "Inspector Advika"},
-    "Tumakuru": {"lat": 13.3401, "lng": 77.1006, "x": 58, "y": 68, "risk_type": "hotspot", "io": "Inspector Harish"},
-    "Kolar": {"lat": 13.1367, "lng": 78.1292, "x": 82, "y": 74, "risk_type": "repeat_offender", "io": "Inspector Harshil"},
-    "Ramanagara": {"lat": 12.7209, "lng": 77.2799, "x": 63, "y": 81, "risk_type": "standard", "io": "Inspector Noah"},
-    "Mandya": {"lat": 12.5218, "lng": 76.8951, "x": 56, "y": 81, "risk_type": "standard", "io": "Inspector Devansh"},
-    "Chitradurga": {"lat": 14.2251, "lng": 76.3980, "x": 52, "y": 51, "risk_type": "standard", "io": "Inspector Waida"},
-    "K.Railways": {"lat": 12.9716, "lng": 77.5946, "x": 66, "y": 74, "risk_type": "hotspot", "io": "Inspector Advika"},
+    "Bagalkot": {"lat": 16.1853, "lng": 75.6961, "risk_type": "standard", "io": "Inspector Harish"},
+    "Ballari": {"lat": 15.1394, "lng": 76.9214, "risk_type": "severity", "io": "Inspector Advika"},
+    "Belagavi City": {"lat": 15.8497, "lng": 74.5086, "risk_type": "repeat_offender", "io": "Inspector Noah"},
+    "Belagavi District": {"lat": 15.8497, "lng": 74.5086, "risk_type": "repeat_offender", "io": "Inspector Noah"},
+    "Bengaluru City": {"lat": 12.9716, "lng": 77.5946, "risk_type": "severity", "io": "Inspector Harish"},
+    "Bengaluru District": {"lat": 12.9716, "lng": 77.5946, "risk_type": "severity", "io": "Inspector Harish"},
+    "Bidar": {"lat": 17.9104, "lng": 77.5199, "risk_type": "standard", "io": "Inspector Devansh"},
+    "Chamarajnagar": {"lat": 11.9261, "lng": 76.9437, "risk_type": "standard", "io": "Inspector Waida"},
+    "Chikkaballapura": {"lat": 13.4355, "lng": 77.7275, "risk_type": "hotspot", "io": "Inspector Harshil"},
+    "Chikkamagaluru": {"lat": 13.3161, "lng": 75.7720, "risk_type": "standard", "io": "Inspector Harshil"},
+    "Chitradurga": {"lat": 14.2251, "lng": 76.3980, "risk_type": "standard", "io": "Inspector Waida"},
+    "Dakshina Kannada": {"lat": 12.9141, "lng": 74.8560, "risk_type": "repeat_offender", "io": "Inspector Waida"},
+    "Davanagere": {"lat": 14.4644, "lng": 75.9218, "risk_type": "standard", "io": "Inspector Waida"},
+    "Dharwad": {"lat": 15.3647, "lng": 75.1240, "risk_type": "repeat_offender", "io": "Inspector Harish"},
+    "Gadag": {"lat": 15.4319, "lng": 75.6355, "risk_type": "standard", "io": "Inspector Noah"},
+    "Hassan": {"lat": 13.0068, "lng": 76.1004, "risk_type": "standard", "io": "Inspector Noah"},
+    "Haveri": {"lat": 14.7954, "lng": 75.3992, "risk_type": "standard", "io": "Inspector Harshil"},
+    "Hubballi Dharwad": {"lat": 15.3647, "lng": 75.1240, "risk_type": "repeat_offender", "io": "Inspector Harish"},
+    "K.G.F.": {"lat": 12.9597, "lng": 78.2712, "risk_type": "hotspot", "io": "Inspector Advika"},
+    "K.Railways": {"lat": 12.9716, "lng": 77.5946, "risk_type": "hotspot", "io": "Inspector Advika"},
+    "Kalaburgi": {"lat": 17.3297, "lng": 76.8343, "risk_type": "severity", "io": "Inspector Devansh"},
+    "Kalaburgi City": {"lat": 17.3297, "lng": 76.8343, "risk_type": "severity", "io": "Inspector Devansh"},
+    "Kodagu": {"lat": 12.4244, "lng": 75.7382, "risk_type": "standard", "io": "Inspector Waida"},
+    "Kolar": {"lat": 13.1367, "lng": 78.1292, "risk_type": "repeat_offender", "io": "Inspector Harshil"},
+    "Koppal": {"lat": 15.3519, "lng": 76.1554, "risk_type": "standard", "io": "Inspector Devansh"},
+    "Mandya": {"lat": 12.5218, "lng": 76.8951, "risk_type": "standard", "io": "Inspector Devansh"},
+    "Mangaluru City": {"lat": 12.9141, "lng": 74.8560, "risk_type": "repeat_offender", "io": "Inspector Waida"},
+    "Mysuru City": {"lat": 12.2958, "lng": 76.6394, "risk_type": "hotspot", "io": "Inspector Harshil"},
+    "Mysuru District": {"lat": 12.2958, "lng": 76.6394, "risk_type": "hotspot", "io": "Inspector Harshil"},
+    "Raichur": {"lat": 16.2076, "lng": 77.3556, "risk_type": "severity", "io": "Inspector Advika"},
+    "Ramanagara": {"lat": 12.7209, "lng": 77.2799, "risk_type": "standard", "io": "Inspector Noah"},
+    "Shimoga": {"lat": 13.9299, "lng": 75.5681, "risk_type": "hotspot", "io": "Inspector Devansh"},
+    "Tumakuru": {"lat": 13.3401, "lng": 77.1006, "risk_type": "hotspot", "io": "Inspector Harish"},
+    "Udupi": {"lat": 13.3409, "lng": 74.7421, "risk_type": "hotspot", "io": "Inspector Advika"},
+    "Uttara Kannada": {"lat": 14.8158, "lng": 74.1240, "risk_type": "standard", "io": "Inspector Waida"},
+    "Vijayanagara": {"lat": 15.2688, "lng": 76.3909, "risk_type": "hotspot", "io": "Inspector Harshil"},
+    "Vijayapura": {"lat": 16.8302, "lng": 75.7100, "risk_type": "severity", "io": "Inspector Noah"},
+    "Yadgiri": {"lat": 16.7645, "lng": 77.1357, "risk_type": "standard", "io": "Inspector Devansh"},
 }
 
 INTER_DISTRICT_LINKS = [
@@ -65,7 +79,7 @@ INTER_DISTRICT_LINKS = [
     },
     {
         "source": "Bengaluru City",
-        "target": "Dakshina Kannada",
+        "target": "Mangaluru City",
         "relation": "Repeat Offender Syndicate Network Link",
         "shared_accused": "Accused #11 (Anuj M. Syndicate)",
         "transfer_amount_inr": 12400000,
@@ -82,12 +96,12 @@ INTER_DISTRICT_LINKS = [
         "directive": "Issue CrPC Sec 70 Non-Bailable Arrest Warrant."
     },
     {
-        "source": "Kalaburagi",
+        "source": "Kalaburgi City",
         "target": "Ballari",
         "relation": "Cross-District Organised Crime Syndicate",
         "shared_accused": "Accused #771 (Ramesh M. Gang)",
         "transfer_amount_inr": 5600000,
-        "linked_firs": "FIR #88/2024 (Kalaburagi City PS) & FIR #144/2025 (Ballari Rural PS)",
+        "linked_firs": "FIR #88/2024 (Kalaburgi PS) & FIR #144/2025 (Ballari Rural PS)",
         "directive": "Initiate KPM Sec 1205 Joint Inter-District Intelligence Operation."
     },
     {
@@ -100,7 +114,7 @@ INTER_DISTRICT_LINKS = [
         "directive": "Audit linked bank account last4 #9482 under CrPC Sec 102."
     },
     {
-        "source": "Shivamogga",
+        "source": "Shimoga",
         "target": "Chikkamagaluru",
         "relation": "Malnad Highway Property Theft MO Linkage",
         "shared_accused": "Accused #319 (Ganesh P.)",
@@ -137,7 +151,7 @@ def fetch_analytics_summary(
 ) -> Dict[str, Any]:
     """
     Returns pre-aggregated dataset for all 8 required analytics charts along with
-    dynamically generated plain-language summaries, Karnataka macro district nodes, and micro individual case nodes.
+    dynamically generated plain-language summaries, Karnataka macro district nodes, and micro individual case nodes across all 38 districts.
     """
     try:
         # Build SQL Filter Clauses
@@ -286,7 +300,7 @@ def fetch_analytics_summary(
         district_nodes = []
         for r in macro_rows:
             d_name = r.get("district_name")
-            pin = DISTRICT_MAP_PINS.get(d_name, {"lat": 12.9716, "lng": 77.5946, "x": 50, "y": 50, "risk_type": "standard", "io": "Inspector Harish"})
+            pin = DISTRICT_MAP_PINS.get(d_name, {"lat": 12.9716, "lng": 77.5946, "risk_type": "standard", "io": "Inspector Harish"})
             district_nodes.append({
                 "id": f"node_{d_name.lower().replace(' ', '_')}",
                 "district_name": d_name,
@@ -294,30 +308,31 @@ def fetch_analytics_summary(
                 "top_crime_type": r.get("top_crime_type"),
                 "primary_station": r.get("primary_station"),
                 "sample_facts": r.get("sample_facts", "")[:120] + "...",
-                "risk_type": pin["risk_type"],
-                "investigating_officer": pin["io"],
-                "lat": pin["lat"],
-                "lng": pin["lng"],
-                "x": pin["x"],
-                "y": pin["y"]
+                "risk_type": pin.get("risk_type", "standard"),
+                "investigating_officer": pin.get("io", "Inspector Harish"),
+                "lat": pin.get("lat", 12.9716),
+                "lng": pin.get("lng", 77.5946)
             })
 
-        # Fetch Individual Cases for Zoom-In View & Local District Networks
+        # FETCH MICRO INDIVIDUAL CASES ACROSS ALL 38 DISTRICTS (Ranked up to 6 cases per district)
         micro_cases_sql = f"""
-            SELECT 
-                c.casemasterid,
-                COALESCE(c.crimeno, 101) AS crimeno,
-                COALESCE(d.districtname, 'Bengaluru City') AS district_name,
-                COALESCE(u.unitname, 'PS Division 1') AS station_name,
-                COALESCE(ch.crimegroupname, 'Financial Fraud') AS crime_type,
-                COALESCE(c.brieffacts, 'Case under active CCTNS investigation.') AS brief_facts,
-                c.gravityoffenceid
-            FROM casemaster c
-            LEFT JOIN unit u ON c.policestationid = u.unitid
-            LEFT JOIN district d ON u.districtid = d.districtid
-            LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
-            {where_sql}
-            LIMIT 40;
+            WITH RankedCases AS (
+                SELECT 
+                    c.casemasterid,
+                    COALESCE(c.crimeno, 101) AS crimeno,
+                    COALESCE(d.districtname, 'Bengaluru City') AS district_name,
+                    COALESCE(u.unitname, 'Town PS Division') AS station_name,
+                    COALESCE(ch.crimegroupname, 'Financial Fraud') AS crime_type,
+                    COALESCE(c.brieffacts, 'Case under active CCTNS investigation.') AS brief_facts,
+                    c.gravityoffenceid,
+                    ROW_NUMBER() OVER (PARTITION BY COALESCE(d.districtname, 'Bengaluru City') ORDER BY c.casemasterid) as rn
+                FROM casemaster c
+                LEFT JOIN unit u ON c.policestationid = u.unitid
+                LEFT JOIN district d ON u.districtid = d.districtid
+                LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
+                {where_sql}
+            )
+            SELECT * FROM RankedCases WHERE rn <= 6;
         """
         micro_case_rows = execute_query(micro_cases_sql, tuple(params))
         
@@ -328,9 +343,9 @@ def fetch_analytics_summary(
         for idx, row in enumerate(micro_case_rows):
             d_name = row.get("district_name")
             base_pin = DISTRICT_MAP_PINS.get(d_name, {"lat": 12.9716, "lng": 77.5946, "io": "Inspector Harish"})
-            # Offset lat/lng slightly around district centroid
+            # Offset lat/lng evenly around district centroid pin
             angle = (idx % 6) * (math.pi / 3)
-            dist_offset = 0.08 + (idx % 3) * 0.04
+            dist_offset = 0.05 + ((idx % 3) * 0.03)
             c_lat = base_pin["lat"] + dist_offset * math.sin(angle)
             c_lng = base_pin["lng"] + dist_offset * math.cos(angle)
 
@@ -345,14 +360,14 @@ def fetch_analytics_summary(
                 "crime_type": row.get("crime_type"),
                 "brief_facts": row.get("brief_facts", "")[:120] + "...",
                 "risk_type": risk,
-                "investigating_officer": base_pin["io"],
+                "investigating_officer": base_pin.get("io", "Inspector Harish"),
                 "lat": c_lat,
                 "lng": c_lng,
                 "case_count": 1
             }
             individual_case_nodes.append(case_node)
 
-            # Create local intra-district network links between nearby cases
+            # Create local intra-district network links between nearby cases in same district
             if idx > 0 and idx % 2 == 1:
                 prev_case = individual_case_nodes[idx - 1]
                 if prev_case["district_name"] == d_name:

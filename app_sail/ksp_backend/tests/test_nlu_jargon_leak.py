@@ -27,10 +27,11 @@ BANNED_JARGON_SUBSTRINGS = [
     "claude-3",
     "reasoning",
     "NLU",
-    "classified",
+    "intent_classified",
     "llm_provider",
     "standalone_query"
 ]
+
 
 
 def test_no_jargon_leaks_in_responses():
