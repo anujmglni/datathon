@@ -207,9 +207,9 @@ def fetch_analytics_summary(
             SELECT 
                 COALESCE(ch.crimegroupname, 'General Offenses') AS crime_type,
                 CASE 
-                    WHEN ((c.casemasterid * 7 + COALESCE(c.policestationid, 1) * 13) %% 24) BETWEEN 6 AND 11 THEN 'Morning (06:00-12:00)'
-                    WHEN ((c.casemasterid * 7 + COALESCE(c.policestationid, 1) * 13) %% 24) BETWEEN 12 AND 17 THEN 'Afternoon (12:00-18:00)'
-                    WHEN ((c.casemasterid * 7 + COALESCE(c.policestationid, 1) * 13) %% 24) BETWEEN 18 AND 23 THEN 'Evening (18:00-24:00)'
+                    WHEN MOD(c.casemasterid * 7 + COALESCE(c.policestationid, 1) * 13, 24) BETWEEN 6 AND 11 THEN 'Morning (06:00-12:00)'
+                    WHEN MOD(c.casemasterid * 7 + COALESCE(c.policestationid, 1) * 13, 24) BETWEEN 12 AND 17 THEN 'Afternoon (12:00-18:00)'
+                    WHEN MOD(c.casemasterid * 7 + COALESCE(c.policestationid, 1) * 13, 24) BETWEEN 18 AND 23 THEN 'Evening (18:00-24:00)'
                     ELSE 'Night (00:00-06:00)'
                 END AS time_of_day,
                 COUNT(c.casemasterid) AS case_count
