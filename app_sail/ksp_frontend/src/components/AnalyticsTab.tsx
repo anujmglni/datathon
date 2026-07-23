@@ -32,7 +32,9 @@ import {
   ShieldCheck,
   Building2,
   DollarSign,
-  Users
+  Users,
+  FileText,
+  Image as ImageIcon
 } from "lucide-react";
 
 // Dynamically import NDAP Leaflet Map component on client side (ssr: false)
@@ -149,6 +151,58 @@ export default function AnalyticsTab() {
     } catch (e) {
       console.error(`Failed to capture ${elemId}:`, e);
       return "";
+    }
+  };
+
+  // Dedicated Metric PDF Export for Individual Chart Cards
+  const handleExportChartPdf = async (
+    cardId: string,
+    chartTitle: string,
+    whatItDepicts: string,
+    casesCompared: string,
+    aiFindings: string
+  ) => {
+    try {
+      const imgDataUrl = await captureCardPng(cardId);
+      const markdown = [
+        `# KARNATAKA STATE POLICE — ${chartTitle.toUpperCase()} REPORT`,
+        `**Active Parameters:** Jurisdiction: ${district.toUpperCase()} | Crime Category: ${crimeType.toUpperCase()} | Year: ${selectedYear.toUpperCase()} | Timeline: Last ${dateRange} Days`,
+        "---",
+        "",
+        `## 1. VISUAL ANALYTICS CHART`,
+        imgDataUrl ? `![${chartTitle}](${imgDataUrl})` : "",
+        "",
+        "## 2. DETAILED METHODOLOGY & COMPARATIVE EXPLANATION",
+        `- **What this Metric Depicts:** ${whatItDepicts}`,
+        `- **Dataset & Cases Compared:** ${casesCompared}`,
+        `- **Key AI Criminological Findings:** ${aiFindings}`,
+        "",
+        "---",
+        "",
+        "## 3. STRATEGIC LAW ENFORCEMENT DIRECTIVE",
+        `- **Operational Recommendation:** Deploy targeted station patrols under Sec 102 CrPC & CCTNS monitoring based on statistical variance shown in this metric.`,
+        "",
+        "---",
+        "",
+        "**ISSUING AUTHORITY:**",
+        "Office of the Director General of Police, State Crime Records Bureau (SCRB), Bengaluru, Karnataka"
+      ].join("\n");
+
+      const res = await generatePdfReport(`KSP ${chartTitle} - ${district}`, markdown);
+      if (res.download_url) {
+        const pdfRes = await fetch(res.download_url);
+        const blob = await pdfRes.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = res.filename || `ksp_${chartTitle.toLowerCase().replace(/[^a-z0-9]/g, "_")}_report.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      }
+    } catch (err) {
+      console.error(`Chart PDF export failed for ${cardId}:`, err);
     }
   };
 
@@ -376,13 +430,29 @@ export default function AnalyticsTab() {
                     <MapPin className="w-4 h-4 text-blue-600" />
                     <h3 className="font-bold text-sm text-slate-900">1. Crime Density (District × Month)</h3>
                   </div>
-                  <button
-                    onClick={() => downloadChartImage("chart-card-1", "District_Month_Heatmap")}
-                    className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg transition"
-                    title="Download Chart Image (PNG)"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => downloadChartImage("chart-card-1", "District_Month_Heatmap")}
+                      className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition"
+                      title="Download Chart Image (PNG)"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleExportChartPdf(
+                        "chart-card-1",
+                        "District x Month Crime Density Heatmap",
+                        "Sequential heat intensity matrix mapping reported case density across 38 Karnataka districts over monthly intervals.",
+                        `Comparing all registered FIRs matching jurisdiction '${district.toUpperCase()}' and category '${crimeType.toUpperCase()}' for year '${selectedYear.toUpperCase()}'.`,
+                        payload.heatmap_district_month?.description || "Density matrix active."
+                      )}
+                      className="flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold px-2.5 py-1 rounded-lg border border-blue-200 transition cursor-pointer"
+                      title="Export Focused Metric PDF Report"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Export PDF
+                    </button>
+                  </div>
                 </div>
 
                 {/* Heatmap Grid */}
@@ -440,13 +510,29 @@ export default function AnalyticsTab() {
                     <Calendar className="w-4 h-4 text-purple-600" />
                     <h3 className="font-bold text-sm text-slate-900">2. Crime Type × Time of Day</h3>
                   </div>
-                  <button
-                    onClick={() => downloadChartImage("chart-card-2", "Crime_TimeOfDay_Heatmap")}
-                    className="p-1.5 hover:bg-purple-50 text-purple-600 rounded-lg transition"
-                    title="Download Chart Image (PNG)"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => downloadChartImage("chart-card-2", "Crime_TimeOfDay_Heatmap")}
+                      className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition"
+                      title="Download Chart Image (PNG)"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleExportChartPdf(
+                        "chart-card-2",
+                        "Crime Type x Time of Day Temporal Clustering",
+                        "Temporal distribution of offense occurrence across 6-hour operational patrol windows (Morning, Afternoon, Evening, Night).",
+                        `Analyzing incident timestamps across major crime heads within '${district.toUpperCase()}' jurisdiction.`,
+                        payload.heatmap_crime_timeofday?.description || "Temporal distribution tracked."
+                      )}
+                      className="flex items-center gap-1 bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs font-bold px-2.5 py-1 rounded-lg border border-purple-200 transition cursor-pointer"
+                      title="Export Focused Metric PDF Report"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Export PDF
+                    </button>
+                  </div>
                 </div>
 
                 {/* Heatmap Grid */}
@@ -505,13 +591,27 @@ export default function AnalyticsTab() {
                     <h3 className="font-bold text-sm text-slate-900">3. Monthly Crime Trend Progression</h3>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => downloadChartImage("chart-card-3", "Crime_Trend_LineChart")}
-                      className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-lg transition"
+                      className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition"
                       title="Download Chart Image (PNG)"
                     >
-                      <Download className="w-4 h-4" />
+                      <ImageIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleExportChartPdf(
+                        "chart-card-3",
+                        "Monthly Crime Trend Progression",
+                        "Longitudinal line chart tracking case registration progression and seasonality trends across monthly buckets.",
+                        `Comparing monthly FIR volume trends across the selected timeline (${dateRange} days).`,
+                        payload.line_crime_trends?.description || "Progression timeline active."
+                      )}
+                      className="flex items-center gap-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold px-2.5 py-1 rounded-lg border border-emerald-200 transition cursor-pointer"
+                      title="Export Focused Metric PDF Report"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Export PDF
                     </button>
                   </div>
                 </div>
@@ -573,10 +673,24 @@ export default function AnalyticsTab() {
 
                     <button
                       onClick={() => downloadChartImage("chart-card-4", "Top_Offenses_BarChart")}
-                      className="p-1.5 hover:bg-amber-50 text-amber-600 rounded-lg transition"
+                      className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition"
                       title="Download Chart Image (PNG)"
                     >
-                      <Download className="w-4 h-4" />
+                      <ImageIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleExportChartPdf(
+                        "chart-card-4",
+                        "Top Districts by Volume & Statutory Gravity",
+                        "Comparative ranking contrasting raw FIR case counts against statutory severity weighted by GravityOffence score.",
+                        `Ranking top 10 Karnataka districts by raw volume vs penal gravity weight under active filters.`,
+                        payload.bar_top_offenses?.description || "Gravity ranking indexed."
+                      )}
+                      className="flex items-center gap-1 bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs font-bold px-2.5 py-1 rounded-lg border border-amber-200 transition cursor-pointer"
+                      title="Export Focused Metric PDF Report"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Export PDF
                     </button>
                   </div>
                 </div>
@@ -644,13 +758,29 @@ export default function AnalyticsTab() {
                     <ShieldCheck className="w-4 h-4 text-indigo-600" />
                     <h3 className="font-bold text-xs text-slate-900">5. Case Disposition Status</h3>
                   </div>
-                  <button
-                    onClick={() => downloadChartImage("chart-card-6", "Case_Status_DonutChart")}
-                    className="p-1.5 hover:bg-indigo-50 text-indigo-600 rounded-lg transition"
-                    title="Download Chart Image (PNG)"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => downloadChartImage("chart-card-6", "Case_Status_DonutChart")}
+                      className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition"
+                      title="Download Chart Image (PNG)"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleExportChartPdf(
+                        "chart-card-6",
+                        "Case Disposition Status Breakdown",
+                        "Proportional donut distribution of cases across CCTNS investigation stages (Under Investigation, Charge Sheeted, Pending Trial, Closed).",
+                        `Evaluating legal resolution breakdown for cases matching '${crimeType.toUpperCase()}' in '${district.toUpperCase()}'.`,
+                        payload.donut_case_status?.description || "Status disposition tracked."
+                      )}
+                      className="flex items-center gap-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-bold px-2.5 py-1 rounded-lg border border-indigo-200 transition cursor-pointer"
+                      title="Export Focused Metric PDF Report"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Export PDF
+                    </button>
+                  </div>
                 </div>
 
                 <div className="h-56 mt-4">
@@ -694,13 +824,29 @@ export default function AnalyticsTab() {
                     <DollarSign className="w-4 h-4 text-emerald-600" />
                     <h3 className="font-bold text-xs text-slate-900">6. Financial Crime Lost vs Recovered</h3>
                   </div>
-                  <button
-                    onClick={() => downloadChartImage("chart-card-7", "Financial_Crime_Summary")}
-                    className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-lg transition"
-                    title="Download Chart Image (PNG)"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => downloadChartImage("chart-card-7", "Financial_Crime_Summary")}
+                      className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition"
+                      title="Download Chart Image (PNG)"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleExportChartPdf(
+                        "chart-card-7",
+                        "Financial Crime Loss vs Recovery Audit",
+                        "Dual-bar financial audit comparing total INR funds stolen versus funds frozen/recovered across cyber and economic fraud categories.",
+                        `Auditing financial transaction records and Sec 102 CrPC lien orders across bank accounts matching active filters.`,
+                        payload.financial_crime_summary?.description || "Recovery rate tracked."
+                      )}
+                      className="flex items-center gap-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold px-2.5 py-1 rounded-lg border border-emerald-200 transition cursor-pointer"
+                      title="Export Focused Metric PDF Report"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Export PDF
+                    </button>
+                  </div>
                 </div>
 
                 <div className="h-56 mt-4">
@@ -746,13 +892,29 @@ export default function AnalyticsTab() {
                     <Users className="w-4 h-4 text-blue-600" />
                     <h3 className="font-bold text-xs text-slate-900">7. Sociological Correlation</h3>
                   </div>
-                  <button
-                    onClick={() => downloadChartImage("chart-card-8", "Sociological_ScatterPlot")}
-                    className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg transition"
-                    title="Download Chart Image (PNG)"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => downloadChartImage("chart-card-8", "Sociological_ScatterPlot")}
+                      className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition"
+                      title="Download Chart Image (PNG)"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleExportChartPdf(
+                        "chart-card-8",
+                        "Sociological Correlation Scatter Plot",
+                        "Bivariate scatter plot correlating district case volume against socio-demographic metrics (Literacy Rate & Urbanization %).",
+                        `Cross-analyzing census socio-economic indicators against reported commercial and property offenses under active filters.`,
+                        payload.sociological_correlation?.description || "Demographic correlation active."
+                      )}
+                      className="flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold px-2.5 py-1 rounded-lg border border-blue-200 transition cursor-pointer"
+                      title="Export Focused Metric PDF Report"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Export PDF
+                    </button>
+                  </div>
                 </div>
 
                 <div className="h-56 mt-4">

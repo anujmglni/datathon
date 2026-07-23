@@ -453,17 +453,23 @@ def fetch_analytics_summary(
         )
 
         # --- 7. FINANCIAL CRIME SUMMARY: AMOUNT LOST VS RECOVERED ---
-        fin_sql = """
+        fin_sql = f"""
             SELECT 
-                COALESCE(fraudtype, 'Financial Fraud') AS fraud_type,
-                SUM(COALESCE(amountlostinr, 0)) AS total_lost_inr,
-                SUM(COALESCE(amountrecoveredinr, 0)) AS total_recovered_inr,
-                COUNT(transactionid) AS transaction_count
-            FROM financialtransaction
+                COALESCE(ft.fraudtype, 'Financial Fraud') AS fraud_type,
+                SUM(COALESCE(ft.amountlostinr, 0)) AS total_lost_inr,
+                SUM(COALESCE(ft.amountrecoveredinr, 0)) AS total_recovered_inr,
+                COUNT(ft.transactionid) AS transaction_count
+            FROM financialtransaction ft
+            LEFT JOIN casemaster c ON ft.casemasterid = c.casemasterid
+            {join_sql}
+            LEFT JOIN unit u ON c.policestationid = u.unitid
+            LEFT JOIN district d ON u.districtid = d.districtid
+            LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
+            {where_sql}
             GROUP BY fraud_type
             ORDER BY total_lost_inr DESC;
         """
-        fin_rows = execute_query(fin_sql)
+        fin_rows = execute_query(fin_sql, tuple(params))
         top_fin = fin_rows[0] if fin_rows else {}
         total_lost = float(top_fin.get("total_lost_inr", 0) or 0)
         total_rec = float(top_fin.get("total_recovered_inr", 0) or 0)
