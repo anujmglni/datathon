@@ -484,8 +484,8 @@ def get_network_graph(
                 JOIN case_embeddings e2 ON e1.casemasterid < e2.casemasterid
                 WHERE e1.casemasterid IN %s 
                   AND e2.casemasterid IN %s
-                  AND (1 - (e1.embedding <=> e2.embedding)) >= 0.65
-                LIMIT 50;
+                  AND (1 - (e1.embedding <=> e2.embedding)) >= 0.82
+                LIMIT 30;
             """
             mo_rows = execute_query(mo_sql, (case_id_tuples, case_id_tuples))
             
@@ -528,8 +528,13 @@ def get_network_graph(
     filtered_edges = []
     connected_node_ids: Set[str] = set()
 
+    used_min_strength = min_link_strength
+    if min_link_strength > 1 and not any(e["weight"] >= min_link_strength for e in raw_edges.values()):
+        logger.info(f"No edges with weight >= {min_link_strength}. Falling back to 1 for display.")
+        used_min_strength = 1
+
     for e in raw_edges.values():
-        if e["weight"] >= min_link_strength:
+        if e["weight"] >= used_min_strength:
             cases_list = list(e["cases"])
             trans_list = list(e.get("transactions", []))
             
@@ -623,11 +628,12 @@ def get_entity_dossier_profile(entity_id: str, entity_type: str = "accused") -> 
         attributes = {}
 
         if entity_type == "accused":
-            # Fetch accused details
-            acc_info = execute_query("SELECT * FROM accused WHERE accusedmasterid = %s OR personid = %s LIMIT 1", (raw_id if raw_id.isdigit() else 0, str(raw_id)))
+            acc_info = execute_query("SELECT * FROM accused WHERE accusedmasterid = %s LIMIT 1", (raw_id if raw_id.isdigit() else 0,))
+            acc_name = None
             if acc_info:
                 r = acc_info[0]
-                entity_name = r.get("accusedname") or f"Accused #{r.get('accusedmasterid')}"
+                acc_name = r.get("accusedname")
+                entity_name = acc_name or f"Accused #{r.get('accusedmasterid')}"
                 attributes = {
                     "AccusedMasterID": r.get("accusedmasterid"),
                     "PersonID": r.get("personid"),
@@ -635,9 +641,8 @@ def get_entity_dossier_profile(entity_id: str, entity_type: str = "accused") -> 
                     "Gender": "Male" if r.get("genderid") == 1 else ("Female" if r.get("genderid") == 2 else "Other")
                 }
 
-            # Fetch all linked cases
             cases_sql = """
-                SELECT 
+                SELECT DISTINCT ON (c.casemasterid)
                     c.casemasterid AS CaseMasterID,
                     c.crimeno AS CrimeNo,
                     c.crimeregistereddate AS CrimeRegisteredDate,
@@ -652,10 +657,10 @@ def get_entity_dossier_profile(entity_id: str, entity_type: str = "accused") -> 
                 LEFT JOIN district d ON u.districtid = d.districtid
                 LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
                 LEFT JOIN employee e ON c.policepersonid = e.employeeid
-                WHERE a.accusedmasterid = %s OR a.personid = %s
+                WHERE a.accusedmasterid = %s OR a.personid = %s OR (a.accusedname IS NOT NULL AND a.accusedname ILIKE %s)
                 ORDER BY c.casemasterid DESC;
             """
-            cases = execute_query(cases_sql, (raw_id if raw_id.isdigit() else 0, str(raw_id)))
+            cases = execute_query(cases_sql, (raw_id if raw_id.isdigit() else 0, str(raw_id), f"%{acc_name}%" if acc_name else "___NONE___"))
 
         elif entity_type == "victim":
             vic_info = execute_query("SELECT * FROM victim WHERE victimmasterid = %s LIMIT 1", (raw_id if raw_id.isdigit() else 0,))
