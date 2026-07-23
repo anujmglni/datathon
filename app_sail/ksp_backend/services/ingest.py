@@ -146,14 +146,22 @@ def seed_sociological_indicators():
     print(f"✅ Seeded socio-demographic indicators for {count} districts.")
     return {"status": "success", "districts_seeded": count}
 
-def search_similar_past_cases(query_text: str, top_k: int = 5, min_similarity: float = 0.20) -> list[dict]:
-
+def search_similar_past_cases(query_text: str, top_k: int = 5, min_similarity: float = 0.20):
     """
     Performs true vector similarity search over CaseMaster using pgvector (or SQLite fallback).
-    Requires a minimum similarity floor of min_similarity (default 0.35).
+    Requires a minimum similarity floor of min_similarity (default 0.20).
+    Returns a tuple of (results_list, compiled_sql_string).
     """
+    compiled_sql = (
+        f"SELECT c.casemasterid AS case_id, c.crimeno AS crime_no, c.brieffacts AS brief_facts, "
+        f"c.crimeregistereddate AS date, 1 - (e.embedding <=> :query_vector) AS similarity_score "
+        f"FROM case_embeddings e JOIN casemaster c ON e.casemasterid = c.casemasterid "
+        f"WHERE (1 - (e.embedding <=> :query_vector)) >= {min_similarity} "
+        f"ORDER BY e.embedding <=> :query_vector LIMIT {top_k};"
+    )
+
     if not query_text or not query_text.strip():
-        return []
+        return [], compiled_sql
 
     from services.embed_cases import embed_text
     query_vector = embed_text(query_text)
@@ -220,9 +228,11 @@ def search_similar_past_cases(query_text: str, top_k: int = 5, min_similarity: f
 
     except Exception as e:
         print(f"⚠️ search_similar_past_cases error: {e}")
-        return []
+        return [], compiled_sql
     finally:
         release_connection(conn, db_type)
+
+    return results, compiled_sql
 
     return results
 

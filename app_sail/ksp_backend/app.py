@@ -121,20 +121,26 @@ def process_query(req: QueryRequest):
 
     # 2. Skill Dispatching & Targeted Hybrid Retrieval
     if intent == "RAG_NARRATIVE" or "similar" in req.query.lower() or "modus operandi" in req.query.lower():
-        similar_cases = search_similar_past_cases(query_for_search, top_k=5)
+        similar_cases, compiled_sql = search_similar_past_cases(query_for_search, top_k=5)
         elapsed = round(time.time() - start_time, 3)
         answer_summary = synthesize_rag_response(query_for_search, "RAG_NARRATIVE", similar_cases, req.user_role)
         session.add_turn(req.query, answer_summary)
+        
+        sim_scores = [r.get("similarity_score") for r in similar_cases if r.get("similarity_score") is not None]
+        avg_score = round(sum(sim_scores) / len(sim_scores), 4) if sim_scores else 0.0
+
         return {
             "session_id": req.session_id,
             "answer": answer_summary,
             "intent": "RAG_NARRATIVE",
             "data": similar_cases,
             "explainable_ai": {
-                "sql_executed": "VECTOR_COSINE_SIMILARITY(casemaster.brieffacts)",
+                "sql_executed": compiled_sql,
                 "was_redacted": False,
                 "rows_touched": len(similar_cases),
                 "execution_time_seconds": elapsed,
+                "similarity_scores": sim_scores,
+                "avg_similarity_score": avg_score,
                 "slots_active": session.active_slots
             }
         }
@@ -326,7 +332,13 @@ def summarize_text(req: TextSummarizeRequest):
     # Generate concise executive summary
     sentences = [s.strip() for s in raw_text.replace("\n", " ").split(".") if len(s.strip()) > 15]
     summary = ". ".join(sentences[:3]) + "." if sentences else raw_text[:300]
-    
+
+    # Dynamically compute confidence score based on entity coverage and text length
+    entity_count = len(set(ipc_sections)) + len(set(districts))
+    length_bonus = min(0.15, len(raw_text.split()) / 500.0)
+    entity_bonus = min(0.20, entity_count * 0.08)
+    dynamic_confidence = round(min(0.99, 0.65 + length_bonus + entity_bonus), 4)
+
     return {
         "status": "success",
         "service": "Zoho Catalyst Zia AI Text Analytics",
@@ -337,7 +349,7 @@ def summarize_text(req: TextSummarizeRequest):
             "word_count": len(raw_text.split()),
             "character_count": len(raw_text)
         },
-        "zia_confidence_score": 0.96
+        "zia_confidence_score": dynamic_confidence
     }
 
 if __name__ == "__main__":

@@ -222,7 +222,8 @@ def classify_query_semantic_nlu(query: str) -> dict:
     accused_match = re.search(r'\baccused\s+(?:id\s+)?(\d+)\b', query_lower)
     detected_accused_id = int(accused_match.group(1)) if accused_match else None
 
-    is_topic_query = bool(detected_crime_type or search_keywords or detected_accused_id or "traffick" in query_lower)
+    total_score = sum(scores.values())
+    dynamic_conf = round(min(0.98, max(0.50, scores[top_intent] / total_score)), 4) if total_score > 0 else 0.50
 
     return {
         "intent": top_intent,
@@ -232,7 +233,7 @@ def classify_query_semantic_nlu(query: str) -> dict:
         "search_keywords": search_keywords,
         "accused_id": detected_accused_id,
         "is_topic_query": is_topic_query,
-        "confidence": 0.88 if scores[top_intent] > 0 else 0.70,
+        "confidence": dynamic_conf,
         "reasoning": f"Semantic NLU vector similarity matched '{top_intent}' with crime_type='{detected_crime_type}'",
         "llm_provider": "semantic_fallback"
     }
