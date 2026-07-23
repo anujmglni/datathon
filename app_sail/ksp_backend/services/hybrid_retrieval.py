@@ -1,216 +1,184 @@
 """
-PostgreSQL Hybrid Query & Tantivy BM25 Re-Ranking Engine for KSP Platform.
-Combines structured SQL constraints (District, Year, Crime Type, IPC sections)
-with Tantivy full-text BM25 keyword scoring on CaseMaster.BriefFacts narratives.
+PostgreSQL True Hybrid Query Engine with pgvector & Similarity Floor for KSP Platform.
+Combines structured SQL constraints (District, Year, IPC sections, Accused ID)
+with 384-dim dense vector cosine similarity search over persisted CaseMaster embeddings.
+Enforces a configurable minimum similarity threshold (SIMILARITY_THRESHOLD = 0.35).
 """
 
-import re
 import logging
-import tantivy
-from database import execute_query
+from database import get_connection, release_connection
 
 logger = logging.getLogger(__name__)
 
+SIMILARITY_THRESHOLD = 0.20
 
-
-def _tokenize_text(text: str) -> list[str]:
-    """Tokenize text into lowercased words for BM25 scoring."""
-    if not text:
-        return []
-    return [w.lower() for w in re.findall(r'\w+', str(text)) if len(w) > 2]
 
 
 def execute_hybrid_search(intent_data: dict, raw_query: str, top_k: int = 10) -> tuple[list[dict], str]:
     """
-    1. Builds dynamic PostgreSQL SQL query with exact slot filters:
-       - district ILIKE
-       - year (crimeregistereddate LIKE)
-       - crime_type (canonical CrimeHead group + narrative keywords + IPC sections)
-       - keywords / IPC sections (brieffacts ILIKE)
-    2. Fetches candidate pool (up to 40 candidates).
-    3. Uses BM25Okapi on candidate BriefFacts narratives to score and re-rank.
-    4. Strict Zero-Row Integrity: Never returns unrelated fallback cases if 0 match.
+    Executes a single unified SQL hybrid query combining structured filters (WHERE)
+    with vector cosine distance ordering (ORDER BY embedding <=> %s::vector)
+    and a minimum similarity floor (>= 0.35).
     """
     district = intent_data.get("district")
     year = intent_data.get("year")
-    crime_type = intent_data.get("crime_type")
     ipc_sections = intent_data.get("ipc_sections") or []
-    keywords = intent_data.get("search_keywords") or []
-
-    # Clean keywords from query if keywords array was empty
-    if not keywords and raw_query:
-        stopwords = {"show", "me", "recent", "crimes", "cases", "case", "in", "the", "district", "year", "find", "all", "get", "list", "total", "summarise", "summarize", "human", "city", "bengaluru", "mysuru", "mangaluru", "belagavi", "hubballi", "dharwad", "karnataka", "state"}
-        words = [w.lower() for w in re.findall(r'\w+', raw_query) if len(w) > 2 and w.lower() not in stopwords]
-        keywords = words[:4]
-
-
-    # Special phrase check for human trafficking
-    if raw_query and "traffick" in raw_query.lower() and "traffick" not in keywords:
-        keywords.append("traffick")
-
-    sql = """
-        SELECT
-            c.casemasterid AS CaseMasterID,
-            c.crimeno AS CrimeNo,
-            c.crimeregistereddate AS CrimeRegisteredDate,
-            c.brieffacts AS BriefFacts,
-            d.districtname AS DistrictName,
-            ch.crimegroupname AS CrimeGroupName
-        FROM casemaster c
-        JOIN unit u ON c.policestationid = u.unitid
-        JOIN district d ON u.districtid = d.districtid
-        LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
-        WHERE 1=1
-    """
-    params = []
-
     accused_id = intent_data.get("accused_id")
-    case_no = intent_data.get("case_no")
-    is_topic = intent_data.get("is_topic_query", False)
+    query_for_vec = intent_data.get("standalone_query") or raw_query
 
-    # 1. District filter
-    if district:
-        sql += " AND d.districtname ILIKE %s"
-        params.append(f"%{district}%")
+    # Generate query vector using cached model
+    from services.embed_cases import embed_text
+    query_vector = embed_text(query_for_vec)
 
-    # 2. Year filter
-    if year:
-        sql += " AND c.crimeregistereddate LIKE %s"
-        params.append(f"%{year}%")
+    conn, db_type = get_connection()
+    results = []
 
-    # 3. Accused ID filter
-    if accused_id:
-        has_specific_filter = True
-        sql += " AND c.casemasterid IN (SELECT casemasterid FROM accused WHERE accusedmasterid = %s OR personid = %s)"
-        params.extend([accused_id, accused_id])
-
-    # 4. Canonical Crime Type & Keyword Synonym Mapping
-    where_or_clauses = []
-    has_specific_filter = False
-
-    if crime_type:
-        has_specific_filter = True
-        c_lower = crime_type.lower()
-        if any(term in c_lower for term in ["murder", "homicide", "killing", "death", "302"]):
-            where_or_clauses.extend(["ch.crimegroupname ILIKE %s", "c.brieffacts ILIKE %s", "c.brieffacts ILIKE %s", "c.brieffacts ILIKE %s"])
-            params.extend(["%Body%", "%murder%", "%homicide%", "%302%"])
-        elif any(term in c_lower for term in ["traffick", "human trafficking", "370", "immoral"]):
-            where_or_clauses.extend(["c.brieffacts ILIKE %s", "c.brieffacts ILIKE %s", "c.brieffacts ILIKE %s"])
-            params.extend(["%traffick%", "%370%", "%immoral%"])
-        elif any(term in c_lower for term in ["assault", "molestation", "modesty", "women", "354"]):
-            where_or_clauses.extend(["ch.crimegroupname ILIKE %s", "c.brieffacts ILIKE %s", "c.brieffacts ILIKE %s"])
-            params.extend(["%Body%", "%assault%", "%modesty%"])
-        elif any(term in c_lower for term in ["cyber", "fraud", "cheating", "online", "420"]):
-            where_or_clauses.extend(["ch.crimegroupname ILIKE %s", "c.brieffacts ILIKE %s", "c.brieffacts ILIKE %s"])
-            params.extend(["%Documents%", "%fraud%", "%cyber%"])
-        elif any(term in c_lower for term in ["theft", "robbery", "snatching", "stolen", "379", "356"]):
-            where_or_clauses.extend(["ch.crimegroupname ILIKE %s", "c.brieffacts ILIKE %s", "c.brieffacts ILIKE %s"])
-            params.extend(["%Property%", "%theft%", "%snatching%"])
-        elif any(term in c_lower for term in ["driving", "accident", "rash", "279"]):
-            where_or_clauses.extend(["ch.crimegroupname ILIKE %s", "c.brieffacts ILIKE %s"])
-            params.extend(["%Misc%", "%driving%"])
-        else:
-            where_or_clauses.extend(["ch.crimegroupname ILIKE %s", "c.brieffacts ILIKE %s"])
-            params.extend([f"%{crime_type}%", f"%{crime_type}%"])
-
-    for kw in keywords[:3]:
-        if kw.lower() in ["human", "cases", "case", "city", "bengaluru", "mysuru", "mangaluru", "belagavi", "hubballi", "dharwad", "karnataka", "state"]:
-            continue
-        has_specific_filter = True
-        where_or_clauses.append("c.brieffacts ILIKE %s")
-        params.append(f"%{kw}%")
-
-    for ipc in ipc_sections[:2]:
-        has_specific_filter = True
-        where_or_clauses.append("c.brieffacts ILIKE %s")
-        params.append(f"%{ipc}%")
-
-    if where_or_clauses:
-        sql += f" AND ({' OR '.join(where_or_clauses)})"
-
-    sql += " ORDER BY c.casemasterid DESC LIMIT 40;"
-
-    # Execute candidate search
-    try:
-        candidates = execute_query(sql, tuple(params) if params else ())
-    except Exception as e:
-        logger.debug(f"Primary SQL Search Fallback ({e})")
-        sql_fallback = "SELECT casemasterid AS CaseMasterID, crimeno AS CrimeNo, crimeregistereddate AS CrimeRegisteredDate, brieffacts AS BriefFacts FROM casemaster ORDER BY casemasterid DESC LIMIT 30;"
-        candidates = execute_query(sql_fallback)
-
-    # 4. Strict Zero-Row Return: If a specific crime/keyword was queried and 0 matched, return []
-    # Do NOT inject random unrelated cases (e.g. Rash Driving for Murder / Trafficking queries!)
-    specific_query_terms = ["traffick", "murder", "homicide", "theft", "robbery", "cyber", "fraud", "extortion", "narcotic", "ndps", "kidnap", "abduct", "assault", "molest", "dowry", "rape", "370", "302", "379", "420"]
-    is_topic_query = is_topic or has_specific_filter or any(t in raw_query.lower() for t in specific_query_terms)
-
-    if not candidates:
-        if is_topic_query:
-            logger.debug(f"0 records matched strict filters for crime_type='{crime_type}', keywords={keywords}. Zero false-match return.")
-            return [], sql
-
-
-        # Only if user asked a generic query without specific topic ("Show all crimes in 2023"), return latest cases
-        relaxed_sql = """
-            SELECT c.casemasterid AS CaseMasterID, c.crimeno AS CrimeNo, c.crimeregistereddate AS CrimeRegisteredDate, c.brieffacts AS BriefFacts, d.districtname AS DistrictName
+    if db_type == "postgresql":
+        sql = """
+            SELECT 
+                c.casemasterid AS CaseMasterID,
+                c.crimeno AS CrimeNo,
+                c.crimeregistereddate AS CrimeRegisteredDate,
+                c.brieffacts AS BriefFacts,
+                d.districtname AS DistrictName,
+                ch.crimegroupname AS CrimeGroupName,
+                1 - (e.embedding <=> %s::vector) AS similarity_score
             FROM casemaster c
+            JOIN case_embeddings e ON c.casemasterid = e.casemasterid
             JOIN unit u ON c.policestationid = u.unitid
             JOIN district d ON u.districtid = d.districtid
+            LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
             WHERE 1=1
         """
-        relaxed_params = []
+        params = [query_vector]
+
         if district:
-            relaxed_sql += " AND d.districtname ILIKE %s"
-            relaxed_params.append(f"%{district}%")
+            sql += " AND d.districtname ILIKE %s"
+            params.append(f"%{district}%")
+
         if year:
-            relaxed_sql += " AND c.crimeregistereddate LIKE %s"
-            relaxed_params.append(f"%{year}%")
-        relaxed_sql += " ORDER BY c.casemasterid DESC LIMIT 30;"
-        candidates = execute_query(relaxed_sql, tuple(relaxed_params) if relaxed_params else ())
+            sql += " AND c.crimeregistereddate LIKE %s"
+            params.append(f"%{year}%")
 
-    if not candidates:
-        return [], sql
+        if accused_id:
+            sql += " AND c.casemasterid IN (SELECT casemasterid FROM accused WHERE accusedmasterid::text = %s OR personid::text = %s)"
+            params.extend([str(accused_id), str(accused_id)])
 
+        if ipc_sections:
+            ipc_clauses = []
+            for ipc in ipc_sections[:2]:
+                ipc_clauses.append("c.brieffacts ILIKE %s")
+                params.append(f"%{ipc}%")
+            if ipc_clauses:
+                sql += f" AND ({' OR '.join(ipc_clauses)})"
 
-    # 5. Tantivy BM25 Re-Ranking on Candidate BriefFacts
-    if candidates and raw_query:
+        # Similarity threshold floor
+        sql += " AND (1 - (e.embedding <=> %s::vector)) >= %s"
+        params.extend([query_vector, SIMILARITY_THRESHOLD])
+
+        # Exact distance ordering and top_k limit
+        sql += " ORDER BY e.embedding <=> %s::vector LIMIT %s;"
+        params.extend([query_vector, top_k])
+
+        compiled_sql = sql
+        for p in params:
+            if isinstance(p, list):
+                compiled_sql = compiled_sql.replace("%s::vector", f"'[{','.join(map(str, p[:3]))}...]'::vector", 1)
+            else:
+                compiled_sql = compiled_sql.replace("%s", f"'{p}'", 1)
+
         try:
-            builder = tantivy.SchemaBuilder()
-            builder.add_integer_field("doc_idx", stored=True)
-            builder.add_text_field("brief_facts", stored=True)
-            schema = builder.build()
-
-            index = tantivy.Index(schema)
-            writer = index.writer()
-
-            for idx, r in enumerate(candidates):
-                text = str(r.get("BriefFacts") or r.get("brieffacts") or "")
-                writer.add_document(tantivy.Document(doc_idx=[idx], brief_facts=[text]))
-
-            writer.commit()
-            index.reload()
-            searcher = index.searcher()
-
-            clean_query = " ".join(re.findall(r'\w+', raw_query))
-            if clean_query:
-                query = index.parse_query(clean_query, ["brief_facts"])
-                results = searcher.search(query, len(candidates))
-
-                scores_map = {}
-                for score, doc_address in results.hits:
-                    doc = searcher.doc(doc_address)
-                    doc_dict = doc.to_dict()
-                    doc_idx = doc_dict["doc_idx"][0]
-                    scores_map[doc_idx] = round(float(score), 4)
-
-                for idx, r in enumerate(candidates):
-                    r["_bm25_score"] = scores_map.get(idx, 0.0)
-
-                candidates.sort(key=lambda x: x.get("_bm25_score", 0.0), reverse=True)
+            with conn.cursor() as cur:
+                cur.execute(sql, tuple(params))
+                rows = cur.fetchall()
+                for r in rows:
+                    results.append({
+                        "CaseMasterID": r[0],
+                        "CrimeNo": r[1],
+                        "CrimeRegisteredDate": str(r[2]),
+                        "BriefFacts": r[3],
+                        "DistrictName": r[4],
+                        "CrimeGroupName": r[5],
+                        "similarity_score": round(float(r[6]), 4)
+                    })
         except Exception as e:
-            logger.debug(f"Tantivy BM25 Scoring Error: {e}")
-            for r in candidates:
-                r["_bm25_score"] = 0.0
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            logger.error(f"PostgreSQL Hybrid Query Error: {e}")
+            return [], sql
+        finally:
+            release_connection(conn, db_type)
+
+        return results, compiled_sql
 
 
-    return candidates[:top_k], sql
+    else:
+        # SQLite fallback: single query pattern over SQLite tables
+        import json
+        import numpy as np
 
+        q_vec = np.array(query_vector, dtype=np.float32)
+
+        sql = """
+            SELECT 
+                c.casemasterid AS CaseMasterID,
+                c.crimeno AS CrimeNo,
+                c.crimeregistereddate AS CrimeRegisteredDate,
+                c.brieffacts AS BriefFacts,
+                d.districtname AS DistrictName,
+                ch.crimegroupname AS CrimeGroupName,
+                e.embedding_json
+            FROM casemaster c
+            JOIN case_embeddings e ON c.casemasterid = e.casemasterid
+            JOIN unit u ON c.policestationid = u.unitid
+            JOIN district d ON u.districtid = d.districtid
+            LEFT JOIN crimehead ch ON c.crimemajorheadid = ch.crimeheadid
+            WHERE 1=1
+        """
+        params = []
+
+        if district:
+            sql += " AND d.districtname LIKE ?"
+            params.append(f"%{district}%")
+
+        if year:
+            sql += " AND c.crimeregistereddate LIKE ?"
+            params.append(f"%{year}%")
+
+        if accused_id:
+            sql += " AND c.casemasterid IN (SELECT casemasterid FROM accused WHERE accusedmasterid = ? OR personid = ?)"
+            params.extend([accused_id, accused_id])
+
+        try:
+            cur = conn.cursor()
+            cur.execute(sql, tuple(params))
+            rows = cur.fetchall()
+
+            scored_rows = []
+            for r in rows:
+                if not r[6]:
+                    continue
+                emb = np.array(json.loads(r[6]), dtype=np.float32)
+                sim = float(np.dot(q_vec, emb))
+                if sim >= SIMILARITY_THRESHOLD:
+                    scored_rows.append({
+                        "CaseMasterID": r[0],
+                        "CrimeNo": r[1],
+                        "CrimeRegisteredDate": str(r[2]),
+                        "BriefFacts": r[3],
+                        "DistrictName": r[4],
+                        "CrimeGroupName": r[5],
+                        "similarity_score": round(sim, 4)
+                    })
+
+            scored_rows.sort(key=lambda x: x["similarity_score"], reverse=True)
+            results = scored_rows[:top_k]
+        except Exception as e:
+            logger.error(f"SQLite Hybrid Query Error: {e}")
+            results = []
+        finally:
+            release_connection(conn, db_type)
+
+        return results, sql
