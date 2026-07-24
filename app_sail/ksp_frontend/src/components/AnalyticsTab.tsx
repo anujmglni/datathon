@@ -133,6 +133,7 @@ export default function AnalyticsTab() {
   };
 
   const [exportingPdf, setExportingPdf] = useState<boolean>(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const captureCardPng = async (elemId: string): Promise<string> => {
     const elem = document.getElementById(elemId);
@@ -159,14 +160,15 @@ export default function AnalyticsTab() {
 
   // Dedicated Metric PDF Export for Individual Chart Cards
   const handleExportChartPdf = async (
-    cardId: string,
+    graphId: string,
     chartTitle: string,
     whatItDepicts: string,
     casesCompared: string,
     aiFindings: string
   ) => {
     try {
-      const imgDataUrl = await captureCardPng(cardId);
+      setExportError(null);
+      const imgDataUrl = await captureCardPng(graphId);
       const markdown = [
         `# KARNATAKA STATE POLICE — ${chartTitle.toUpperCase()} REPORT`,
         `**Jurisdiction:** ${district.toUpperCase()} | **Category:** ${crimeType} | **Year:** ${selectedYear === "all" ? "All Years (2019-2025)" : selectedYear} | **Period:** Last ${dateRange} Days`,
@@ -200,9 +202,14 @@ export default function AnalyticsTab() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+      } else {
+        const errMsg = res?.error || "Chart PDF generation returned no download URL.";
+        console.error(`Chart PDF export failed for ${graphId}:`, errMsg);
+        setExportError(errMsg);
       }
-    } catch (err) {
-      console.error(`Chart PDF export failed for ${cardId}:`, err);
+    } catch (err: any) {
+      console.error(`Chart PDF export failed for ${graphId}:`, err);
+      setExportError(err.message || "Failed to generate focused chart PDF.");
     }
   };
 
@@ -210,14 +217,15 @@ export default function AnalyticsTab() {
   const handleExportFullDashboard = async () => {
     if (!payload) return;
     setExportingPdf(true);
+    setExportError(null);
     try {
-      const c1Png = await captureCardPng("chart-card-1");
-      const c2Png = await captureCardPng("chart-card-2");
-      const c3Png = await captureCardPng("chart-card-3");
-      const c4Png = await captureCardPng("chart-card-4");
-      const c6Png = await captureCardPng("chart-card-6");
-      const c7Png = await captureCardPng("chart-card-7");
-      const c8Png = await captureCardPng("chart-card-8");
+      const c1Png = await captureCardPng("chart-graph-1");
+      const c2Png = await captureCardPng("chart-graph-2");
+      const c3Png = await captureCardPng("chart-graph-3");
+      const c4Png = await captureCardPng("chart-graph-4");
+      const c6Png = await captureCardPng("chart-graph-6");
+      const c7Png = await captureCardPng("chart-graph-7");
+      const c8Png = await captureCardPng("chart-graph-8");
 
       const markdown = [
         "# KARNATAKA STATE POLICE — EXECUTIVE CRIME ANALYTICS REPORT",
@@ -396,6 +404,19 @@ export default function AnalyticsTab() {
         </button>
       </div>
 
+      {/* EXPORT ERROR BANNER */}
+      {exportError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center justify-between text-xs text-red-700">
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-red-600 shrink-0" />
+            <p><span className="font-bold">PDF Export Error:</span> {exportError}</p>
+          </div>
+          <button onClick={() => setExportError(null)} className="font-bold text-red-800 hover:underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* LOADING SPINNER */}
       {loading && (
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center flex flex-col items-center justify-center space-y-3">
@@ -420,7 +441,7 @@ export default function AnalyticsTab() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => downloadChartImage("chart-card-1", "District_Month_Heatmap")}
+                      onClick={() => downloadChartImage("chart-graph-1", "District_Month_Heatmap")}
                       className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition"
                       title="Download Chart Image (PNG)"
                     >
@@ -428,7 +449,7 @@ export default function AnalyticsTab() {
                     </button>
                     <button
                       onClick={() => handleExportChartPdf(
-                        "chart-card-1",
+                        "chart-graph-1",
                         "District x Month Crime Density Heatmap",
                         "Sequential heat intensity matrix mapping reported case density across 38 Karnataka districts over monthly intervals.",
                         `Comparing all registered FIRs matching jurisdiction '${district.toUpperCase()}' and category '${crimeType.toUpperCase()}' for year '${selectedYear.toUpperCase()}'.`,
@@ -444,7 +465,7 @@ export default function AnalyticsTab() {
                 </div>
 
                 {/* Heatmap Grid */}
-                <div className="mt-4 overflow-x-auto">
+                <div id="chart-graph-1" className="mt-4 overflow-x-auto p-2 bg-white rounded-xl">
                   <table className="w-full text-[11px] border-collapse">
                     <thead>
                       <tr>
@@ -500,7 +521,7 @@ export default function AnalyticsTab() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => downloadChartImage("chart-card-2", "Crime_TimeOfDay_Heatmap")}
+                      onClick={() => downloadChartImage("chart-graph-2", "Crime_TimeOfDay_Heatmap")}
                       className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition"
                       title="Download Chart Image (PNG)"
                     >
@@ -508,7 +529,7 @@ export default function AnalyticsTab() {
                     </button>
                     <button
                       onClick={() => handleExportChartPdf(
-                        "chart-card-2",
+                        "chart-graph-2",
                         "Crime Type x Time of Day Temporal Clustering",
                         "Temporal distribution of offense occurrence across 6-hour operational patrol windows (Morning, Afternoon, Evening, Night).",
                         `Analyzing incident timestamps across major crime heads within '${district.toUpperCase()}' jurisdiction.`,
@@ -524,7 +545,7 @@ export default function AnalyticsTab() {
                 </div>
 
                 {/* Heatmap Grid */}
-                <div className="mt-4 overflow-x-auto">
+                <div id="chart-graph-2" className="mt-4 overflow-x-auto p-2 bg-white rounded-xl">
                   <table className="w-full text-[11px] border-collapse">
                     <thead>
                       <tr>
@@ -581,7 +602,7 @@ export default function AnalyticsTab() {
 
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => downloadChartImage("chart-card-3", "Crime_Trend_LineChart")}
+                      onClick={() => downloadChartImage("chart-graph-3", "Crime_Trend_LineChart")}
                       className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition"
                       title="Download Chart Image (PNG)"
                     >
@@ -589,7 +610,7 @@ export default function AnalyticsTab() {
                     </button>
                     <button
                       onClick={() => handleExportChartPdf(
-                        "chart-card-3",
+                        "chart-graph-3",
                         "Monthly Crime Trend Progression",
                         "Longitudinal line chart tracking case registration progression and seasonality trends across monthly buckets.",
                         `Comparing monthly FIR volume trends across the selected timeline (${dateRange} days).`,
@@ -604,7 +625,7 @@ export default function AnalyticsTab() {
                   </div>
                 </div>
 
-                <div className="h-60 mt-4">
+                <div id="chart-graph-3" className="h-60 mt-4 p-2 bg-white rounded-xl">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={payload.line_crime_trends?.data || []}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -660,7 +681,7 @@ export default function AnalyticsTab() {
                     </div>
 
                     <button
-                      onClick={() => downloadChartImage("chart-card-4", "Top_Offenses_BarChart")}
+                      onClick={() => downloadChartImage("chart-graph-4", "Top_Offenses_BarChart")}
                       className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition"
                       title="Download Chart Image (PNG)"
                     >
@@ -668,7 +689,7 @@ export default function AnalyticsTab() {
                     </button>
                     <button
                       onClick={() => handleExportChartPdf(
-                        "chart-card-4",
+                        "chart-graph-4",
                         "Top Districts by Volume & Statutory Gravity",
                         "Comparative ranking contrasting raw FIR case counts against statutory severity weighted by GravityOffence score.",
                         `Ranking top 10 Karnataka districts by raw volume vs penal gravity weight under active filters.`,
@@ -683,7 +704,7 @@ export default function AnalyticsTab() {
                   </div>
                 </div>
 
-                <div className="h-60 mt-4">
+                <div id="chart-graph-4" className="h-60 mt-4 p-2 bg-white rounded-xl">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={payload.bar_top_offenses?.data || []}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -748,7 +769,7 @@ export default function AnalyticsTab() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => downloadChartImage("chart-card-6", "Case_Status_DonutChart")}
+                      onClick={() => downloadChartImage("chart-graph-6", "Case_Status_DonutChart")}
                       className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition"
                       title="Download Chart Image (PNG)"
                     >
@@ -756,7 +777,7 @@ export default function AnalyticsTab() {
                     </button>
                     <button
                       onClick={() => handleExportChartPdf(
-                        "chart-card-6",
+                        "chart-graph-6",
                         "Case Disposition Status Breakdown",
                         "Proportional donut distribution of cases across CCTNS investigation stages (Under Investigation, Charge Sheeted, Pending Trial, Closed).",
                         `Evaluating legal resolution breakdown for cases matching '${crimeType.toUpperCase()}' in '${district.toUpperCase()}'.`,
@@ -771,7 +792,7 @@ export default function AnalyticsTab() {
                   </div>
                 </div>
 
-                <div className="h-56 mt-4">
+                <div id="chart-graph-6" className="h-56 mt-4 p-2 bg-white rounded-xl">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -814,7 +835,7 @@ export default function AnalyticsTab() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => downloadChartImage("chart-card-7", "Financial_Crime_Summary")}
+                      onClick={() => downloadChartImage("chart-graph-7", "Financial_Crime_Summary")}
                       className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition"
                       title="Download Chart Image (PNG)"
                     >
@@ -822,7 +843,7 @@ export default function AnalyticsTab() {
                     </button>
                     <button
                       onClick={() => handleExportChartPdf(
-                        "chart-card-7",
+                        "chart-graph-7",
                         "Financial Crime Loss vs Recovery Audit",
                         "Dual-bar financial audit comparing total INR funds stolen versus funds frozen/recovered across cyber and economic fraud categories.",
                         `Auditing financial transaction records and Sec 102 CrPC lien orders across bank accounts matching active filters.`,
@@ -837,7 +858,7 @@ export default function AnalyticsTab() {
                   </div>
                 </div>
 
-                <div className="h-56 mt-4">
+                <div id="chart-graph-7" className="h-56 mt-4 p-2 bg-white rounded-xl">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={payload.financial_crime_summary?.data || []}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -882,7 +903,7 @@ export default function AnalyticsTab() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => downloadChartImage("chart-card-8", "Sociological_ScatterPlot")}
+                      onClick={() => downloadChartImage("chart-graph-8", "Sociological_ScatterPlot")}
                       className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition"
                       title="Download Chart Image (PNG)"
                     >
@@ -890,7 +911,7 @@ export default function AnalyticsTab() {
                     </button>
                     <button
                       onClick={() => handleExportChartPdf(
-                        "chart-card-8",
+                        "chart-graph-8",
                         "Sociological Correlation Scatter Plot",
                         "Bivariate scatter plot correlating district case volume against socio-demographic metrics (Literacy Rate & Urbanization %).",
                         `Cross-analyzing census socio-economic indicators against reported commercial and property offenses under active filters.`,
@@ -905,7 +926,7 @@ export default function AnalyticsTab() {
                   </div>
                 </div>
 
-                <div className="h-56 mt-4">
+                <div id="chart-graph-8" className="h-56 mt-4 p-2 bg-white rounded-xl">
                   <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
