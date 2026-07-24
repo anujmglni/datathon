@@ -74,7 +74,7 @@ Total Cases Analyzed: 1,247
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="h-full overflow-y-auto pr-1 min-h-0 space-y-6 animate-fadeIn">
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -148,7 +148,7 @@ Total Cases Analyzed: 1,247
         {/* Live Preview Side */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col">
           <div className="text-xs font-bold uppercase text-slate-500 border-b border-slate-100 pb-3 mb-4 flex items-center justify-between">
-            <span>📋 Live Executive Preview</span>
+            <span>Live Executive Preview</span>
             <span className="text-[10px] text-blue-700 font-mono font-semibold">REPORTLAB & DOCX</span>
           </div>
 

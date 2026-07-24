@@ -24,7 +24,7 @@ export async function sendQuery(query: string, sessionId: string = "default_sess
   } catch (e: any) {
     return {
       session_id: sessionId,
-      answer: `❌ Connection Error: ${e.message}`,
+      answer: `Connection Error: ${e.message}`,
       intent: "ERROR",
       data: [],
       explainable_ai: {

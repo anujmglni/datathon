@@ -331,7 +331,7 @@ export default function AnalyticsTab() {
   const mapLinks = payload?.choropleth_district_map?.links || [];
 
   return (
-    <div className="space-y-6 pb-12 animate-fadeIn">
+    <div className="h-full overflow-y-auto pr-1 min-h-0 space-y-6 pb-12 animate-fadeIn">
       
       {/* GLOBAL CONTROLS & YEAR TOGGLE HEADER */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-4">

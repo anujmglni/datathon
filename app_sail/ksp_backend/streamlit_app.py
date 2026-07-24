@@ -15,7 +15,7 @@ API_BASE = "http://localhost:8080"
 
 st.set_page_config(
     page_title="KSP Crime Intelligence",
-    page_icon="🛡️",
+    page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -146,7 +146,7 @@ def render_network_graph(graph_data):
     edges = graph_data.get("edges", [])
 
     if not nodes:
-        st.warning("⚠️ No criminal network data found matching current filter criteria.")
+        st.warning("No criminal network data found matching current filter criteria.")
         return
 
     # Build NetworkX graph for spring layout positioning
@@ -221,7 +221,7 @@ def render_network_graph(graph_data):
         bet = meta.get("betweenness_centrality", 0.0)
 
         hover_texts.append(
-            f"<b>👤 Suspect: {name}</b> (ID #{n})<br>"
+            f"<b>Suspect: {name}</b> (ID #{n})<br>"
             f"<b>Age/Gender:</b> {age} yrs / {gender}<br>"
             f"<b>Total Cases:</b> {cases_cnt} | <b>Cluster:</b> Gang Group #{comm + 1}<br>"
             f"<b>Districts:</b> {districts}<br>"
@@ -250,7 +250,7 @@ def render_network_graph(graph_data):
         data=traces,
         layout=go.Layout(
             title=dict(
-                text=f"🕸️ Criminal Network Graph — {len(nodes)} Suspects | {len(edges)} Links",
+                text=f"Criminal Network Graph — {len(nodes)} Suspects | {len(edges)} Links",
                 font=dict(size=16, color="#f8fafc")
             ),
             showlegend=True,
@@ -267,7 +267,7 @@ def render_network_graph(graph_data):
     st.plotly_chart(fig, use_container_width=True)
 
     # ── Detailed Suspect Table ──────────────────────────────────────────
-    st.markdown("##### 🔴 High-Risk Suspect Intelligence Table")
+    st.markdown("##### High-Risk Suspect Intelligence Table")
     df_nodes = pd.DataFrame(nodes)
     if not df_nodes.empty:
         # Reorder and format columns
@@ -286,7 +286,7 @@ def render_network_graph(graph_data):
 
 # ── Sidebar ─────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### ⚙️ Settings")
+    st.markdown("### Settings")
     online = check_health()
     if online:
         st.markdown('<span class="badge-online">● BACKEND ONLINE</span>', unsafe_allow_html=True)
@@ -295,11 +295,11 @@ with st.sidebar:
         st.error("Run `python app.py` first")
 
     st.divider()
-    user_role = st.selectbox("👤 Role (RBAC)", ["Analyst", "SP", "DGP", "Inspector", "Constable"])
-    session_id = st.text_input("🔑 Session", value="streamlit_chat_1")
+    user_role = st.selectbox("Role (RBAC)", ["Analyst", "SP", "DGP", "Inspector", "Constable"])
+    session_id = st.text_input("Session", value="streamlit_chat_1")
 
     st.divider()
-    st.markdown("### 💡 Try These Queries")
+    st.markdown("### Try These Queries")
     examples = [
         "Show me recent crimes in Bengaluru",
         "Theft cases in Mysuru district",
@@ -313,7 +313,7 @@ with st.sidebar:
             st.session_state["pending_query"] = ex
 
     st.divider()
-    if st.button("🗑️ Clear Chat", use_container_width=True):
+    if st.button("Clear Chat", use_container_width=True):
         st.session_state["chat_history"] = []
         st.rerun()
 
@@ -321,13 +321,13 @@ with st.sidebar:
 # ── Header ──────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="header-banner">
-    <h1>🛡️ Karnataka Police — Crime Intelligence Platform</h1>
+    <h1>Karnataka Police — Crime Intelligence Platform</h1>
     <p>Conversational AI for crime analytics, criminal network analysis, and case intelligence</p>
 </div>
 """, unsafe_allow_html=True)
 
 # ── Tabs ────────────────────────────────────────────────────────────────
-tab_chat, tab_graph, tab_pdf, tab_ocr = st.tabs(["💬 Chat Intelligence", "🕸️ Criminal Network Graph", "📄 PDF Report", "📷 Zia AI — OCR & Summarizer"])
+tab_chat, tab_graph, tab_pdf, tab_ocr = st.tabs(["Chat Intelligence", "Criminal Network Graph", "PDF Report", "Zia AI — OCR & Summarizer"])
 
 # ═══════════════════════════════════════════════════════════════════════
 # TAB 1 — CHAT INTERFACE
@@ -338,13 +338,13 @@ with tab_chat:
 
     # Render chat history
     for msg in st.session_state["chat_history"]:
-        with st.chat_message(msg["role"], avatar="🧑‍✈️" if msg["role"] == "user" else "🛡️"):
+        with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
             if msg.get("dataframe") is not None:
-                with st.expander(f"📚 Grounding Sources & Citations ({len(msg['dataframe'])} database records)", expanded=False):
+                with st.expander(f"Grounding Sources & Citations ({len(msg['dataframe'])} database records)", expanded=False):
                     st.dataframe(msg["dataframe"], use_container_width=True, hide_index=True)
             if msg.get("sql"):
-                with st.expander("⚡ Executed SQL & Provenance"):
+                with st.expander("Executed SQL & Provenance"):
                     st.code(msg["sql"], language="sql")
 
     # Pending query from sidebar
@@ -355,17 +355,17 @@ with tab_chat:
     if query:
         # User message
         st.session_state["chat_history"].append({"role": "user", "content": query})
-        with st.chat_message("user", avatar="🧑‍✈️"):
+        with st.chat_message("user"):
             st.markdown(query)
 
         # Assistant response
-        with st.chat_message("assistant", avatar="🛡️"):
-            with st.spinner("🔍 Analyzing..."):
+        with st.chat_message("assistant"):
+            with st.spinner("Analyzing..."):
                 result = query_backend(query, session_id, user_role)
 
             if "error" in result and "data" not in result:
-                st.error(f"❌ {result['error']}")
-                st.session_state["chat_history"].append({"role": "assistant", "content": f"❌ {result['error']}"})
+                st.error(f"{result['error']}")
+                st.session_state["chat_history"].append({"role": "assistant", "content": f"{result['error']}"})
             else:
                 # Natural language response
                 formatted = format_answer_naturally(result)
@@ -375,7 +375,7 @@ with tab_chat:
                 xai = result.get("explainable_ai", {})
                 intent_name = result.get("intent", "UNKNOWN")
                 elapsed_sec = xai.get("execution_time_seconds", 0.0)
-                st.caption(f"⚡ **Intelligence Engine:** Groq AI (`llama-3.3-70b-versatile`) | **Intent:** `{intent_name}` | **Latency:** `{elapsed_sec:.3f}s`")
+                st.caption(f"**Intelligence Engine:** Groq AI (`llama-3.3-70b-versatile`) | **Intent:** `{intent_name}` | **Latency:** `{elapsed_sec:.3f}s`")
 
                 # Data table
                 data = result.get("data", [])
@@ -386,13 +386,13 @@ with tab_chat:
                     for col in df.columns:
                         if df[col].dtype == "object":
                             df[col] = df[col].astype(str).str[:100]
-                    with st.expander(f"📚 Grounding Sources & Citations ({len(df)} database records)", expanded=False):
+                    with st.expander(f"Grounding Sources & Citations ({len(df)} database records)", expanded=False):
                         st.dataframe(df, use_container_width=True, hide_index=True)
 
                 # SQL
                 sql = xai.get("sql_executed", "")
                 if sql:
-                    with st.expander("⚡ Executed SQL & Provenance"):
+                    with st.expander("Executed SQL & Provenance"):
                         st.code(sql, language="sql")
 
                 st.session_state["chat_history"].append({
@@ -400,7 +400,7 @@ with tab_chat:
                     "content": formatted,
                     "dataframe": df,
                     "sql": sql,
-                    "meta": f"⚡ Groq AI (`llama-3.3-70b-versatile`) | Intent: `{intent_name}`"
+                    "meta": f"Groq AI (`llama-3.3-70b-versatile`) | Intent: `{intent_name}`"
                 })
 
 
@@ -408,16 +408,16 @@ with tab_chat:
 # TAB 2 — CRIMINAL NETWORK GRAPH (VISUAL & INTELLIGENCE)
 # ═══════════════════════════════════════════════════════════════════════
 with tab_graph:
-    st.markdown("### 🕸️ Criminal Network Analysis & Gang Cluster Intelligence")
+    st.markdown("### Criminal Network Analysis & Gang Cluster Intelligence")
     st.caption("Multi-relation association graph connecting suspects via shared case FIRs, financial transaction bank accounts, and police jurisdictions.")
 
     # ── Interactive Filter Controls ─────────────────────────────────────
-    st.markdown("##### 🔍 Network Scope & Filters")
+    st.markdown("##### Network Scope & Filters")
     fcol1, fcol2, fcol3, fcol4 = st.columns([2, 2, 2, 1.5])
 
     with fcol1:
         dist_filter = st.selectbox(
-            "📍 Scope by District",
+            "Scope by District",
             ["All Districts"] + [
                 "Bengaluru City", "Bengaluru District", "Mysuru City", "Mysuru District",
                 "Mangaluru City", "Belagavi City", "Dharwad", "Kalaburgi City", "Ballari",
@@ -427,17 +427,17 @@ with tab_graph:
         )
     with fcol2:
         crime_filter = st.selectbox(
-            "⚖️ Crime Head Type",
+            "Crime Head Type",
             ["All Crime Types", "Property Offenses (1)", "Misc IPC Crimes (2)", "Body Offenses (3)", "Public Tranquility (4)", "Document Fraud (5)"],
             key="graph_crime_filter"
         )
     with fcol3:
-        min_conn = st.slider("🔗 Min Connections Threshold", min_value=1, max_value=5, value=1, key="graph_min_conn")
+        min_conn = st.slider("Min Connections Threshold", min_value=1, max_value=5, value=1, key="graph_min_conn")
 
     with fcol4:
         st.write("")
         st.write("")
-        build_clicked = st.button("🔄 Analyze Graph", type="primary", use_container_width=True)
+        build_clicked = st.button("Analyze Graph", type="primary", use_container_width=True)
 
     if build_clicked or "last_graph_data" not in st.session_state:
         target_dist = None if dist_filter == "All Districts" else dist_filter
@@ -448,7 +448,7 @@ with tab_graph:
             except ValueError:
                 target_head = None
 
-        with st.spinner("🧠 Querying PostgreSQL accused records, financial transactions, and running network analysis..."):
+        with st.spinner("Querying PostgreSQL accused records, financial transactions, and running network analysis..."):
             g_res = build_graph(district=target_dist, crime_head_id=target_head, min_connections=min_conn)
             sum_res = fetch_graph_summary(district=target_dist, crime_head_id=target_head, min_connections=min_conn)
 
@@ -466,16 +466,16 @@ with tab_graph:
 
         # ── Key Summary Metric Cards ─────────────────────────────────────
         m1, m2, m3, m4 = st.columns(4)
-        m1.metric("🔴 Suspects Analyzed", total_nodes)
-        m2.metric("🔗 Multi-Relational Links", total_edges)
-        m3.metric("🧩 Crime Clusters / Gangs", total_comms)
-        m4.metric("💰 Linked Fraud Amount", f"₹{total_fraud:,.2f}" if total_fraud else "₹0.00")
+        m1.metric("Suspects Analyzed", total_nodes)
+        m2.metric("Multi-Relational Links", total_edges)
+        m3.metric("Crime Clusters / Gangs", total_comms)
+        m4.metric("Linked Fraud Amount", f"₹{total_fraud:,.2f}" if total_fraud else "₹0.00")
 
         st.divider()
 
         # ── LLM Intelligence Summary Brief (Groq Powered) ─────────────
         if summary_text:
-            st.markdown("#### 🤖 Groq AI — Criminal Network Intelligence Briefing")
+            st.markdown("#### Groq AI — Criminal Network Intelligence Briefing")
             st.info(summary_text)
             st.divider()
 
@@ -487,7 +487,7 @@ with tab_graph:
 # TAB 3 — PDF REPORT (DOWNLOADABLE)
 # ═══════════════════════════════════════════════════════════════════════
 with tab_pdf:
-    st.markdown("### 📄 Generate & Download Investigation Report")
+    st.markdown("### Generate & Download Investigation Report")
     st.caption("Compile a styled PDF report from your analysis notes.")
 
     report_title = st.text_input("Report Title", value="Bengaluru City Crime Analysis Briefing — 2024")
@@ -516,25 +516,25 @@ Total Cases Analyzed: 1,247
 """
     )
 
-    if st.button("📥 Generate & Download PDF", type="primary"):
+    if st.button("Generate & Download PDF", type="primary"):
         with st.spinner("Generating PDF report..."):
             result = generate_pdf(report_title, report_content)
 
         if "error" in result:
-            st.error(f"❌ {result['error']}")
+            st.error(f"{result['error']}")
         else:
-            st.success(f"✅ PDF generated: **{result.get('filename', 'report.pdf')}**")
+            st.success(f"PDF generated: **{result.get('filename', 'report.pdf')}**")
 
             size = result.get("size_bytes", 0)
             if size > 0:
                 st.metric("File Size", f"{size:,} bytes")
-                st.info("📥 PDF generated on server. In production, this would return a download link.")
+                st.info("PDF generated on server. In production, this would return a download link.")
             else:
-                st.info("📄 Report compiled. Preview below:")
+                st.info("Report compiled. Preview below:")
 
             # Show a live preview of the report
             st.divider()
-            st.markdown("#### 📋 Report Preview")
+            st.markdown("#### Report Preview")
             st.markdown(report_content)
 
 
@@ -542,7 +542,7 @@ Total Cases Analyzed: 1,247
 # TAB 4 — ZIA AI OCR & TEXT SUMMARIZER
 # ═══════════════════════════════════════════════════════════════════════
 with tab_ocr:
-    st.markdown("### 📷 Zoho Catalyst Zia AI — OCR & FIR Text Analytics")
+    st.markdown("### Zoho Catalyst Zia AI — OCR & FIR Text Analytics")
     st.caption("Upload physical FIR images or paste case narratives to extract IPC sections, jurisdictions, and AI summaries.")
 
     uploaded_file = st.file_uploader("Upload FIR Copy / Document (PNG, JPG, PDF, TXT)", type=["png", "jpg", "jpeg", "pdf", "txt"])
@@ -558,23 +558,23 @@ with tab_ocr:
         else:
             st.info(f"Loaded image/document `{uploaded_file.name}`. Sending to Zia OCR service...")
 
-    if st.button("⚡ Run Zia AI Analysis & Summarization", type="primary"):
+    if st.button("Run Zia AI Analysis & Summarization", type="primary"):
         with st.spinner("Processing with Zoho Catalyst Zia AI Text Analytics..."):
             try:
                 r = requests.post(f"{API_BASE}/api/zia/summarize", json={"text": sample_text}, timeout=10)
                 if r.status_code == 200:
                     zia_data = r.json()
-                    st.success("✅ Zia AI Analysis Completed Successfully!")
+                    st.success("Zia AI Analysis Completed Successfully!")
                     
                     c1, c2, c3 = st.columns(3)
                     c1.metric("Zia Confidence Score", f"{zia_data.get('zia_confidence_score', 0.95)*100:.0f}%")
                     c2.metric("Word Count", zia_data.get("extracted_entities", {}).get("word_count", 0))
                     c3.metric("Service Provider", "Zoho Catalyst Zia AI")
 
-                    st.markdown("#### 📝 Executive Summary")
+                    st.markdown("#### Executive Summary")
                     st.info(zia_data.get("executive_summary", ""))
 
-                    st.markdown("#### 🔍 Extracted Named Entities")
+                    st.markdown("#### Extracted Named Entities")
                     entities = zia_data.get("extracted_entities", {})
                     
                     col_a, col_b = st.columns(2)
@@ -591,12 +591,12 @@ with tab_ocr:
                         jur_list = entities.get("jurisdictions", [])
                         if jur_list:
                             for jur in jur_list:
-                                st.markdown(f"- 📍 `{jur}`")
+                                st.markdown(f"- `{jur}`")
                         else:
                             st.write("No specific jurisdictions identified.")
 
                     st.divider()
-                    st.markdown("#### 🔎 Search Similar Past Cases via Vector RAG")
+                    st.markdown("#### Search Similar Past Cases via Vector RAG")
                     if st.button("Find Similar Modus Operandi Cases in Database"):
                         sim_res = query_backend(f"Find similar cases like: {sample_text[:100]}", "zia_session", "Analyst")
                         formatted_sim = format_answer_naturally(sim_res)

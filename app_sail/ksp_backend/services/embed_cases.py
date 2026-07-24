@@ -27,9 +27,9 @@ def get_embedding_model():
     """Returns cached SentenceTransformer model instance."""
     global _model_instance
     if _model_instance is None:
-        print(f"📦 Loading embedding model '{MODEL_NAME}'...")
+        print(f"Loading embedding model '{MODEL_NAME}'...")
         _model_instance = SentenceTransformer(MODEL_NAME)
-        print("✅ Model loaded successfully.")
+        print("Model loaded successfully.")
     return _model_instance
 
 def embed_text(text: str) -> list[float]:
@@ -44,7 +44,7 @@ def embed_all_cases(batch_size: int = 250):
     and inserts/upserts them into case_embeddings table.
     """
     print("\n" + "="*60)
-    print("🚀 BATCH EMBEDDING PIPELINE (pgvector / SQLite)")
+    print("BATCH EMBEDDING PIPELINE (pgvector / SQLite)")
     print("="*60 + "\n")
 
     conn, db_type = get_connection()
@@ -62,10 +62,10 @@ def embed_all_cases(batch_size: int = 250):
             cases = [{"casemasterid": r[0], "brieffacts": r[1]} for r in rows]
 
         total_cases = len(cases)
-        print(f"📊 Found {total_cases} total cases in database to embed.")
+        print(f"Found {total_cases} total cases in database to embed.")
 
         if total_cases == 0:
-            print("⚠️ No cases found in database. Exiting batch embedding.")
+            print("No cases found in database. Exiting batch embedding.")
             return
 
         model = get_embedding_model()
@@ -113,7 +113,7 @@ def embed_all_cases(batch_size: int = 250):
             print(f"   Processed {processed}/{total_cases} cases ({round(processed/total_cases*100, 1)}%) - {rate} cases/sec")
 
         # 3. Post-Ingestion ANALYZE Step
-        print("\n⚡ Running database ANALYZE on case_embeddings table to update statistics...")
+        print("\nRunning database ANALYZE on case_embeddings table to update statistics...")
         if db_type == "postgresql":
             with conn.cursor() as cur:
                 cur.execute("ANALYZE case_embeddings;")
@@ -121,9 +121,9 @@ def embed_all_cases(batch_size: int = 250):
         else:
             conn.execute("ANALYZE case_embeddings;")
             conn.commit()
-        print("✅ ANALYZE case_embeddings completed successfully.")
+        print("ANALYZE case_embeddings completed successfully.")
 
-        print(f"\n🎉 Successfully embedded and indexed {processed} cases in {round(time.time() - start_time, 2)}s!")
+        print(f"\nSuccessfully embedded and indexed {processed} cases in {round(time.time() - start_time, 2)}s!")
 
     finally:
         release_connection(conn, db_type)

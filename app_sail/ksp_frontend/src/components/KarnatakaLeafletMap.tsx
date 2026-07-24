@@ -55,10 +55,10 @@ const RISK_COLOR_HEX: Record<string, string> = {
 };
 
 const RISK_LABEL_MAP: Record<string, string> = {
-  severity: "🔴 High Severity (Grave)",
-  hotspot: "🟡 Financial Fraud Hotspot",
-  repeat_offender: "🟣 Repeat Offender Syndicate",
-  standard: "🔵 Standard Case Jurisdiction"
+  severity: "High Severity (Grave)",
+  hotspot: "Financial Fraud Hotspot",
+  repeat_offender: "Repeat Offender Syndicate",
+  standard: "Standard Case Jurisdiction"
 };
 
 // Robust District Name Matching Function (Normalizes aliases & suffixes)
@@ -186,13 +186,13 @@ export default function KarnatakaLeafletMap({
         const linkPopupHtml = `
           <div style="font-family: sans-serif; font-size: 11px; padding: 6px; max-width: 270px; background: #ffffff; border-radius: 8px;">
             <div style="font-weight: bold; font-size: 12px; color: #be185d; border-bottom: 1px solid #fbcfe8; padding-bottom: 4px; margin-bottom: 4px;">
-              🌐 Statewide Cross-District Linkage: ${link.source} ↔ ${link.target}
+              Statewide Cross-District Linkage: ${link.source} ↔ ${link.target}
             </div>
             <div style="margin-bottom: 3px;"><strong>Relation:</strong> ${link.relation}</div>
             <div style="margin-bottom: 3px; color: #d97706;"><strong>Shared Accused:</strong> ${link.shared_accused}</div>
             <div style="margin-bottom: 3px;"><strong>Proceeds Link:</strong> ₹${link.transfer_amount_inr.toLocaleString()} INR</div>
             <div style="margin-top: 4px; font-size: 10px; color: #475569;"><strong>Linked FIRs:</strong> ${link.linked_firs}</div>
-            <div style="margin-top: 4px; color: #047857; font-weight: bold;">⚡ Directive: ${link.directive}</div>
+            <div style="margin-top: 4px; color: #047857; font-weight: bold;">Directive: ${link.directive}</div>
           </div>
         `;
         polyline.bindPopup(linkPopupHtml);
@@ -215,7 +215,7 @@ export default function KarnatakaLeafletMap({
         const nodePopupHtml = `
           <div style="font-family: sans-serif; font-size: 11px; padding: 6px; max-width: 270px; background: #ffffff; border-radius: 8px;">
             <div style="font-weight: bold; font-size: 12px; color: #1e3a8a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 4px;">
-              📍 ${node.district_name} District Overview
+              ${node.district_name} District Overview
             </div>
             <div style="display: inline-block; background: #eff6ff; color: #1d4ed8; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-bottom: 6px;">
               ${RISK_LABEL_MAP[node.risk_type] || "Standard"} (${node.case_count} Cases)
@@ -227,7 +227,7 @@ export default function KarnatakaLeafletMap({
               "${node.sample_facts}"
             </div>
             <div style="margin-top: 6px; font-size: 10px; color: #2563eb; font-weight: bold; text-align: center; border-t: 1px solid #f1f5f9; padding-top: 4px;">
-              💡 Click node to zoom inside district cases
+              Click node to zoom inside district cases
             </div>
           </div>
         `;
@@ -299,13 +299,13 @@ export default function KarnatakaLeafletMap({
           const linkPopupHtml = `
             <div style="font-family: sans-serif; font-size: 11px; padding: 6px; max-width: 270px;">
               <div style="font-weight: bold; font-size: 12px; color: #1d4ed8; border-bottom: 1px solid #bfdbfe; padding-bottom: 4px; margin-bottom: 4px;">
-                🔍 Local Case Network Link: ${srcCase.fir_number} ↔ ${tgtCase.fir_number}
+                Local Case Network Link: ${srcCase.fir_number} ↔ ${tgtCase.fir_number}
               </div>
               <div><strong>District:</strong> ${link.district_name || srcCase.district_name}</div>
               <div><strong>Relation:</strong> ${link.relation}</div>
               <div style="color: #b45309; font-weight: bold;"><strong>Shared Accused:</strong> ${link.shared_accused}</div>
               <div><strong>Proceeds Link:</strong> ₹${link.transfer_amount_inr.toLocaleString()} INR</div>
-              <div style="margin-top: 4px; color: #047857; font-weight: bold;">⚡ Directive: ${link.directive}</div>
+              <div style="margin-top: 4px; color: #047857; font-weight: bold;">Directive: ${link.directive}</div>
             </div>
           `;
           polyline.bindPopup(linkPopupHtml);
@@ -329,13 +329,13 @@ export default function KarnatakaLeafletMap({
         const casePopupHtml = `
           <div style="font-family: sans-serif; font-size: 11px; padding: 6px; max-width: 270px;">
             <div style="font-weight: bold; font-size: 12px; color: #1e3a8a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 4px;">
-              ⚡ ${cNode.fir_number || "FIR Case"} (${cNode.district_name})
+              ${cNode.fir_number || "FIR Case"} (${cNode.district_name})
             </div>
             <div style="display: inline-block; background: #eff6ff; color: #1d4ed8; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px;">
               Station: ${cNode.station_name || cNode.primary_station}
             </div>
             <div style="color: #be185d; font-weight: bold; margin-bottom: 4px;">
-              👤 Accused: ${cNode.accused_names || "Under Investigation"}
+              Accused: ${cNode.accused_names || "Under Investigation"}
             </div>
             <div><strong>Crime Category:</strong> ${cNode.crime_type || cNode.top_crime_type}</div>
             <div><strong>Assigned Officer:</strong> ${cNode.investigating_officer}</div>
@@ -436,19 +436,19 @@ export default function KarnatakaLeafletMap({
           <span className="text-slate-500 font-bold text-[11px] uppercase tracking-wider">NDAP Risk Legend:</span>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-full bg-rose-600 border border-white" />
-            <span className="text-slate-800 font-semibold text-[11px]">🔴 High Severity</span>
+            <span className="text-slate-800 font-semibold text-[11px]">High Severity</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-full bg-amber-500 border border-white" />
-            <span className="text-slate-800 font-semibold text-[11px]">🟡 Financial Hotspot</span>
+            <span className="text-slate-800 font-semibold text-[11px]">Financial Hotspot</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-full bg-purple-600 border border-white" />
-            <span className="text-slate-800 font-semibold text-[11px]">🟣 Repeat Offender Syndicate</span>
+            <span className="text-slate-800 font-semibold text-[11px]">Repeat Offender Syndicate</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-full bg-blue-600 border border-white" />
-            <span className="text-slate-800 font-semibold text-[11px]">🔵 Standard Case Node</span>
+            <span className="text-slate-800 font-semibold text-[11px]">Standard Case Node</span>
           </div>
         </div>
 
@@ -501,7 +501,7 @@ export default function KarnatakaLeafletMap({
           <div className="pt-2 border-t border-slate-800 text-xs text-slate-300 flex items-center justify-between">
             <p className="text-[11px] text-slate-300 italic">"{hoveredDistrictOverview.sample_facts}"</p>
             <span className="text-[11px] font-bold text-blue-400 whitespace-nowrap pl-3">
-              👉 Click node on map to zoom inside
+              Click node on map to zoom inside
             </span>
           </div>
         </div>
@@ -539,7 +539,7 @@ export default function KarnatakaLeafletMap({
               <span className="font-mono text-blue-300">{hoveredEvidence.linked_firs}</span>
             </div>
             <div className="text-[11px] font-bold text-emerald-400">
-              ⚡ Action: {hoveredEvidence.directive}
+              Action: {hoveredEvidence.directive}
             </div>
           </div>
         </div>

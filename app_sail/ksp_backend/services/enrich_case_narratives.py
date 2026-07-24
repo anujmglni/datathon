@@ -90,7 +90,7 @@ def enrich_database_narratives():
     generating specific, realistic crime narratives for theft, burglary, fraud, murder, etc.
     """
     print("\n" + "="*60)
-    print("✨ NARRATIVE ENRICHMENT PIPELINE (SubHead Specific MO Mapping)")
+    print("NARRATIVE ENRICHMENT PIPELINE (SubHead Specific MO Mapping)")
     print("="*60 + "\n")
 
     conn, db_type = get_connection()
@@ -118,7 +118,7 @@ def enrich_database_narratives():
             rows = cur.fetchall()
 
         total_rows = len(rows)
-        print(f"📊 Found {total_rows} cases to enrich with realistic SubHead narratives.")
+        print(f"Found {total_rows} cases to enrich with realistic SubHead narratives.")
 
         updated_count = 0
         random.seed(42)
@@ -163,10 +163,10 @@ def enrich_database_narratives():
         else:
             conn.commit()
 
-        print(f"✅ Successfully enriched {updated_count} cases with SubHead-specific narratives.")
+        print(f"Successfully enriched {updated_count} cases with SubHead-specific narratives.")
 
         # Re-run embedding pipeline
-        print("\n🔄 Re-running batch embedding pipeline over enriched narratives...")
+        print("\nRe-running batch embedding pipeline over enriched narratives...")
         embed_all_cases()
 
     finally:

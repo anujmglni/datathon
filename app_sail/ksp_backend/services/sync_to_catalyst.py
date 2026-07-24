@@ -21,7 +21,7 @@ def export_postgres_to_csv_bundle():
 
     try:
         print("\n" + "="*65)
-        print("🚀 EXPORTING WHOLE POSTGRESQL DATABASE FOR CATALYST DATASTORE")
+        print("EXPORTING WHOLE POSTGRESQL DATABASE FOR CATALYST DATASTORE")
         print("="*65)
         
         tables = [
@@ -45,10 +45,10 @@ def export_postgres_to_csv_bundle():
                     total_rows += len(df)
                     print(f"  Exported table {table:<30} ({len(df):>6} rows) -> {csv_path.name}")
             except Exception as e:
-                print(f"  ⚠️ Skipping {table}: {e}")
+                print(f"  Skipping {table}: {e}")
 
         print("-" * 65)
-        print(f"✅ Exported {len(tables)} tables ({total_records_format(total_rows)} total rows) to:")
+        print(f"Exported {len(tables)} tables ({total_records_format(total_rows)} total rows) to:")
         print(f"   {bundle_dir}")
         print("=" * 65 + "\n")
         return bundle_dir

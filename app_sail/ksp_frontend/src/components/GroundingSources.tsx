@@ -24,7 +24,7 @@ export default function GroundingSources({ records, sqlExecuted }: GroundingSour
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition"
         >
           <Table className="w-3.5 h-3.5 text-blue-400" />
-          <span>📚 Grounding Sources ({records.length} database records)</span>
+          <span>Grounding Sources ({records.length} database records)</span>
           {showTable ? <ChevronUp className="w-3.5 h-3.5 ml-1" /> : <ChevronDown className="w-3.5 h-3.5 ml-1" />}
         </button>
 
@@ -34,7 +34,7 @@ export default function GroundingSources({ records, sqlExecuted }: GroundingSour
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition"
           >
             <Code2 className="w-3.5 h-3.5 text-amber-400" />
-            <span>⚡ Executed SQL Provenance</span>
+            <span>Executed SQL Provenance</span>
             {showSql ? <ChevronUp className="w-3.5 h-3.5 ml-1" /> : <ChevronDown className="w-3.5 h-3.5 ml-1" />}
           </button>
         )}

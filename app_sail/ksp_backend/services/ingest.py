@@ -84,11 +84,11 @@ def ingest_pdf_documents() -> list[dict]:
 
     for pdf_path in PDF_FILES:
         if not pdf_path.exists():
-            print(f"⚠️ PDF file not found: {pdf_path}")
+            print(f"PDF file not found: {pdf_path}")
             continue
 
         doc = fitz.open(pdf_path)
-        print(f"⚡ Ingesting PDF: {pdf_path.name} ({len(doc)} pages)...")
+        print(f"Ingesting PDF: {pdf_path.name} ({len(doc)} pages)...")
 
         for page_num in range(len(doc)):
             page = doc[page_num]
@@ -104,7 +104,7 @@ def ingest_pdf_documents() -> list[dict]:
                     "length": len(text)
                 })
 
-    print(f"✅ Ingested {len(ingested_chunks)} document chunks.")
+    print(f"Ingested {len(ingested_chunks)} document chunks.")
     return ingested_chunks
 
 def seed_sociological_indicators():
@@ -143,7 +143,7 @@ def seed_sociological_indicators():
         """, (dist_id, dist_name, literacy, urbanization, unemployment, poverty, vulnerability))
         count += 1
 
-    print(f"✅ Seeded socio-demographic indicators for {count} districts.")
+    print(f"Seeded socio-demographic indicators for {count} districts.")
     return {"status": "success", "districts_seeded": count}
 
 def search_similar_past_cases(query_text: str, top_k: int = 5, min_similarity: float = 0.20):
@@ -227,7 +227,7 @@ def search_similar_past_cases(query_text: str, top_k: int = 5, min_similarity: f
             results = scored_cases[:top_k]
 
     except Exception as e:
-        print(f"⚠️ search_similar_past_cases error: {e}")
+        print(f"search_similar_past_cases error: {e}")
         return [], compiled_sql
     finally:
         release_connection(conn, db_type)
@@ -242,7 +242,7 @@ def run_full_ingestion_pipeline():
     Executes database table seeding, PDF document ingestion, socio-demographic seeding, and vector indexing.
     """
     print("\n" + "="*60)
-    print("🚀 KARNATAKA POLICE (KSP) CATALYST INGESTION PIPELINE")
+    print("KARNATAKA POLICE (KSP) CATALYST INGESTION PIPELINE")
     print("="*60 + "\n")
     
     from database import seed_synthetic_data_to_postgres
@@ -256,7 +256,7 @@ def run_full_ingestion_pipeline():
     socio_results = seed_sociological_indicators()
     
     print("\n" + "="*60)
-    print("✅ KSP INGESTION PIPELINE SUCCESSFULLY COMPLETED")
+    print("KSP INGESTION PIPELINE SUCCESSFULLY COMPLETED")
     print("="*60 + "\n")
     
     return {

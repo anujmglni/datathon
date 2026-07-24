@@ -80,7 +80,7 @@ export default function Home() {
         {
           id: String(Date.now() + 1),
           role: "assistant",
-          content: `❌ Error querying backend: ${e.message}`,
+          content: `Error querying backend: ${e.message}`,
           timestamp: new Date(),
         },
       ]);
@@ -133,7 +133,7 @@ export default function Home() {
     .slice(-6);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-900">
+    <div className="h-screen flex flex-col bg-slate-50 font-sans text-slate-900 overflow-hidden">
       {/* Header */}
       <Header
         activeTab={activeTab}
@@ -144,7 +144,7 @@ export default function Home() {
       />
 
       {/* Main Content Body */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto p-4 gap-4 overflow-hidden">
+      <div className="flex-1 flex max-w-7xl w-full mx-auto p-4 gap-4 overflow-hidden min-h-0">
         {/* Left Sidebar */}
         <Sidebar
           chatHistory={chatHistory}
@@ -153,14 +153,14 @@ export default function Home() {
         />
 
         {/* Tab Views */}
-        <main className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-xs p-6 overflow-y-auto flex flex-col justify-between">
+        <main className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-xs p-6 overflow-hidden flex flex-col min-h-0">
           
           {/* TAB 1: CHAT INTELLIGENCE */}
           {activeTab === "chat" && (
-            <div className="flex-1 flex flex-col justify-between space-y-4">
+            <div className="flex-1 flex flex-col justify-between space-y-4 min-h-0 overflow-hidden">
               
               {/* Chat Message List */}
-              <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+              <div className="flex-1 space-y-4 overflow-y-auto pr-2 min-h-0">
                 {messages.length === 0 ? (
                   <div className="text-center py-20 space-y-4 text-slate-500">
                     <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mx-auto shadow-xs p-2">

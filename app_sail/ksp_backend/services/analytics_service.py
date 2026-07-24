@@ -405,7 +405,7 @@ def fetch_analytics_summary(
         top_pct = round((top_map.get("case_count", 0) / total_map_cases) * 100, 1)
 
         map_desc = (
-            f"This central Karnataka geographical intelligence map renders district-wise case nodes color-coded by risk type (🔴 High Gravity Severity, 🟡 Financial Hotspot, 🟣 Repeat Offender Syndicate, 🔵 Standard Case) along with cross-district criminal network linkage lines."
+            f"This central Karnataka geographical intelligence map renders district-wise case nodes color-coded by risk type (High Gravity Severity, Financial Hotspot, Repeat Offender Syndicate, Standard Case) along with cross-district criminal network linkage lines."
             if top_map else "This map displays case nodes across Karnataka districts."
         )
 

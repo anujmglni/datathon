@@ -154,7 +154,7 @@ def synthesize_rag_response(user_query: str, intent: str, data: list, user_role:
 
     if not data or not isinstance(data, list):
         return (
-            f"### ⚠️ No Relevant Cases Found\n\n"
+            f"### No Relevant Cases Found\n\n"
             f"No cases in the Karnataka Police Database met the minimum similarity threshold for query: *\"{user_query}\"*.\n\n"
             f"**Try searching for specific crime scenarios, such as:**\n"
             f"- *\"stolen motor vehicles and motorcycles\"*\n"
@@ -216,10 +216,10 @@ def synthesize_rag_response(user_query: str, intent: str, data: list, user_role:
 
     # 4. Native Specific Case Summary Engine (Zero-Cost Targeted Fallback)
     lines = []
-    lines.append(f"### 📋 Targeted Crime Intelligence Briefing\n")
+    lines.append(f"### Targeted Crime Intelligence Briefing\n")
     lines.append(f"Retrieved **{num_records} matching case file(s)** across **{dist_str}** for query: *\"{user_query}\"*.\n")
 
-    lines.append("### 🔎 Specific Case Findings & Modus Operandi")
+    lines.append("### Specific Case Findings & Modus Operandi")
     for idx, r in enumerate(data[:5], 1):
         cid = r.get("CaseMasterID") or r.get("case_id")
         dist = r.get("DistrictName") or r.get("district_name") or "Karnataka"
@@ -228,7 +228,7 @@ def synthesize_rag_response(user_query: str, intent: str, data: list, user_role:
         score_str = f" *(Match Score: {score})*" if score else ""
         lines.append(f"{idx}. **Case ID {cid}** [{dist}]{score_str}: {facts}")
 
-    lines.append("\n### 🚨 Operational Recommendations")
+    lines.append("\n### Operational Recommendations")
     lines.append(f"1. **Targeted Patrols:** Increase surveillance in identified hotspot jurisdictions ({dist_str}).")
     lines.append("2. **Modus Operandi Tracking:** Cross-reference stolen items and vehicle registration numbers with state database.")
     lines.append("3. **Inter-Station Coordination:** Alert neighboring police stations regarding recurring crime techniques.")

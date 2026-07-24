@@ -18,10 +18,10 @@ export default function Header({
   isBackendHealthy,
 }: HeaderProps) {
   const tabs = [
-    { id: "chat", label: "💬 Chat Intelligence" },
-    { id: "graph", label: "🕸️ Criminal Network Graph" },
-    { id: "analytics", label: "📊 Crime & Trend Analytics" },
-    { id: "pdf", label: "📄 PDF Reports" },
+    { id: "chat", label: "Chat Intelligence" },
+    { id: "graph", label: "Criminal Network Graph" },
+    { id: "analytics", label: "Crime & Trend Analytics" },
+    { id: "pdf", label: "PDF Reports" },
   ];
 
 

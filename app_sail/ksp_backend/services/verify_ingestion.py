@@ -18,7 +18,7 @@ def verify_all_ingested_data():
             tables = [r[0] for r in cursor.fetchall()]
 
         print("\n" + "="*65)
-        print(f"📊 KSP DATABASE INGESTION VERIFICATION REPORT [{db_type.upper()}]")
+        print(f"KSP DATABASE INGESTION VERIFICATION REPORT [{db_type.upper()}]")
         print("="*65)
         print(f"{'Table Name':<35} | {'Row Count':>15}")
         print("-" * 65)
