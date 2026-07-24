@@ -115,9 +115,22 @@ export default function Home() {
     }
   };
 
+  const handleSelectQuery = (queryText: string, messageId?: string) => {
+    if (activeTab !== "chat") setActiveTab("chat");
+    if (messageId) {
+      const elem = document.getElementById(`msg-${messageId}`);
+      if (elem) {
+        elem.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+    }
+    handleSend(queryText);
+  };
+
   const chatHistory = messages
     .filter((m) => m.role === "user")
-    .map((m) => ({ id: m.id, query: m.content, timestamp: m.timestamp.toLocaleTimeString() }));
+    .map((m) => ({ id: m.id, query: m.content, timestamp: m.timestamp.toLocaleTimeString() }))
+    .slice(-6);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-900">
@@ -135,10 +148,7 @@ export default function Home() {
         {/* Left Sidebar */}
         <Sidebar
           chatHistory={chatHistory}
-          onSelectQuery={(q) => {
-            setActiveTab("chat");
-            handleSend(q);
-          }}
+          onSelectQuery={(q, id) => handleSelectQuery(q, id)}
           onNewChat={() => setMessages([])}
         />
 
@@ -166,6 +176,7 @@ export default function Home() {
                 ) : (
                   messages.map((msg) => (
                     <div
+                      id={`msg-${msg.id}`}
                       key={msg.id}
                       className={`flex gap-3 text-xs leading-relaxed ${
                         msg.role === "user" ? "justify-end" : "justify-start"
