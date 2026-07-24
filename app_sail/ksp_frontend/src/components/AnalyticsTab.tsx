@@ -169,7 +169,7 @@ export default function AnalyticsTab() {
       const imgDataUrl = await captureCardPng(cardId);
       const markdown = [
         `# KARNATAKA STATE POLICE — ${chartTitle.toUpperCase()} REPORT`,
-        `**Active Parameters:** Jurisdiction: ${district.toUpperCase()} | Crime Category: ${crimeType.toUpperCase()} | Year: ${selectedYear.toUpperCase()} | Timeline: Last ${dateRange} Days`,
+        `**Jurisdiction:** ${district.toUpperCase()} | **Category:** ${crimeType} | **Year:** ${selectedYear === "all" ? "All Years (2019-2025)" : selectedYear} | **Period:** Last ${dateRange} Days`,
         "---",
         "",
         `## VISUAL ANALYTICS CHART`,
@@ -209,7 +209,7 @@ export default function AnalyticsTab() {
     }
   };
 
-  // Full Executive Analytics Dashboard PDF Report Export with Visual Charts
+  // Full Executive Analytics Dashboard PDF Report Export with Visual Charts (Excluding Map)
   const handleExportFullDashboard = async () => {
     if (!payload) return;
     setExportingPdf(true);
@@ -218,20 +218,19 @@ export default function AnalyticsTab() {
       const c2Png = await captureCardPng("chart-card-2");
       const c3Png = await captureCardPng("chart-card-3");
       const c4Png = await captureCardPng("chart-card-4");
-      const mapPng = await captureCardPng("ndap-karnataka-map-card");
       const c6Png = await captureCardPng("chart-card-6");
       const c7Png = await captureCardPng("chart-card-7");
       const c8Png = await captureCardPng("chart-card-8");
 
       const markdown = [
         "# KARNATAKA STATE POLICE — EXECUTIVE CRIME ANALYTICS REPORT",
-        `**Active Filters:** Jurisdiction: ${district.toUpperCase()} | Crime Category: ${crimeType.toUpperCase()} | Year: ${selectedYear.toUpperCase()} | Timeline: Last ${dateRange} Days`,
+        `**Jurisdiction:** ${district.toUpperCase()} | **Category:** ${crimeType} | **Year:** ${selectedYear === "all" ? "All Years (2019-2025)" : selectedYear} | **Period:** Last ${dateRange} Days`,
         "---",
         "",
         "## DISTRICT × MONTH CRIME DENSITY HEATMAP",
         c1Png ? `![District x Month Heatmap](${c1Png})` : "",
         `- **What it Depicts:** Sequential heat intensity matrix mapping reported case density across 38 Karnataka districts over monthly intervals.`,
-        `- **Cases Compared:** Comparing all registered FIRs matching jurisdiction '${district.toUpperCase()}' and category '${crimeType.toUpperCase()}' for year '${selectedYear.toUpperCase()}'.`,
+        `- **Cases Compared:** Comparing all registered FIRs matching jurisdiction '${district.toUpperCase()}' and category '${crimeType}' for year '${selectedYear === "all" ? "All Years" : selectedYear}'.`,
         `- **Key AI Findings:** ${payload.heatmap_district_month?.description || 'Density matrix active.'}`,
         "",
         "---",
@@ -239,7 +238,7 @@ export default function AnalyticsTab() {
         "## CRIME TYPE × TIME OF DAY TEMPORAL CLUSTERING",
         c2Png ? `![Crime Type x Time Window](${c2Png})` : "",
         `- **What it Depicts:** Temporal distribution of offense occurrence across 6-hour operational patrol windows (Morning, Afternoon, Evening, Night).`,
-        `- **Cases Compared:** Analyzing incident timestamps across major crime heads within '${district.toUpperCase()}' jurisdiction.`,
+        `- **Cases Compared:** Analyzing incident timestamps across major crime heads within '${district.toUpperCase()}' jurisdiction for category '${crimeType}'.`,
         `- **Key AI Findings:** ${payload.heatmap_crime_timeofday?.description || 'Temporal distribution tracked.'}`,
         "",
         "---",
@@ -247,7 +246,7 @@ export default function AnalyticsTab() {
         "## MONTHLY CRIME TREND OVER TIME",
         c3Png ? `![Monthly Crime Trend Line Chart](${c3Png})` : "",
         `- **What it Depicts:** Longitudinal line chart tracking case registration progression and seasonality trends across monthly buckets.`,
-        `- **Cases Compared:** Comparing monthly FIR volume trends across the selected timeline (${dateRange} days).`,
+        `- **Cases Compared:** Comparing monthly FIR volume trends across the selected timeline (${dateRange} days) for '${crimeType}' offenses.`,
         `- **Key AI Findings:** ${payload.line_crime_trends?.description || 'Progression timeline active.'}`,
         "",
         "---",
@@ -255,23 +254,15 @@ export default function AnalyticsTab() {
         "## TOP DISTRICTS BY VOLUME & STATUTORY SEVERITY GRAVITY",
         c4Png ? `![Top Districts Bar Chart](${c4Png})` : "",
         `- **What it Depicts:** Comparative ranking contrasting raw FIR case counts against statutory severity weighted by GravityOffence score.`,
-        `- **Cases Compared:** Ranking top 10 Karnataka districts by raw volume vs penal gravity weight under active filters.`,
+        `- **Cases Compared:** Ranking top Karnataka districts by raw volume vs penal gravity weight under '${crimeType}' filters in ${selectedYear === "all" ? "All Years" : selectedYear}.`,
         `- **Key AI Findings:** ${payload.bar_top_offenses?.description || 'Gravity ranking indexed.'}`,
-        "",
-        "---",
-        "",
-        "## CENTRAL KARNATAKA NDAP GIS MAP & CROSS-DISTRICT NETWORKS",
-        mapPng ? `![Karnataka GIS Leaflet Map](${mapPng})` : "",
-        `- **What it Depicts:** Multi-level GIS map displaying district hub nodes (scaled by case volume), micro FIR case pins, and pink cross-district criminal network linkage lines.`,
-        `- **Cases Compared:** Geospatial mapping of all cases and inter-jurisdictional syndicate proceeds trails across Karnataka.`,
-        `- **Key AI Findings:** ${payload.choropleth_district_map?.description || 'Spatial nodes & network links active.'}`,
         "",
         "---",
         "",
         "## CASE DISPOSITION STATUS BREAKDOWN",
         c6Png ? `![Case Status Donut Chart](${c6Png})` : "",
         `- **What it Depicts:** Proportional donut distribution of cases across CCTNS investigation stages (Under Investigation, Charge Sheeted, Pending Trial, Closed).`,
-        `- **Cases Compared:** Evaluating legal resolution breakdown for cases matching '${crimeType.toUpperCase()}' in '${district.toUpperCase()}'.`,
+        `- **Cases Compared:** Evaluating legal resolution breakdown for cases matching '${crimeType}' in '${district.toUpperCase()}' for year ${selectedYear === "all" ? "2019-2025" : selectedYear}.`,
         `- **Key AI Findings:** ${payload.donut_case_status?.description || 'Status disposition tracked.'}`,
         "",
         "---",
@@ -279,7 +270,7 @@ export default function AnalyticsTab() {
         "## FINANCIAL CRIME LOSS VS RECOVERY AUDIT",
         c7Png ? `![Financial Crime Bar Chart](${c7Png})` : "",
         `- **What it Depicts:** Dual-bar financial audit comparing total INR funds stolen versus funds frozen/recovered across cyber and economic fraud categories.`,
-        `- **Cases Compared:** Auditing financial transaction records and Sec 102 CrPC lien orders across bank accounts.`,
+        `- **Cases Compared:** Auditing financial transaction records and Sec 102 CrPC lien orders across bank accounts matching '${crimeType}' offenses.`,
         `- **Key AI Findings:** ${payload.financial_crime_summary?.description || 'Recovery rate tracked.'}`,
         "",
         "---",
@@ -287,7 +278,7 @@ export default function AnalyticsTab() {
         "## SOCIOLOGICAL CORRELATION SCATTER PLOT",
         c8Png ? `![Sociological Correlation](${c8Png})` : "",
         `- **What it Depicts:** Bivariate scatter plot correlating district case volume against socio-demographic metrics (Literacy Rate & Urbanization %).`,
-        `- **Cases Compared:** Cross-analyzing census socio-economic indicators against reported commercial and property offenses.`,
+        `- **Cases Compared:** Cross-analyzing census socio-economic indicators against reported commercial and property offenses under active parameters.`,
         `- **Key AI Findings:** ${payload.sociological_correlation?.description || 'Demographic correlation active.'}`,
         "",
         "---",
