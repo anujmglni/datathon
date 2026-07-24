@@ -70,10 +70,54 @@ class ReportRequest(BaseModel):
     title: str
     markdown_content: str
 
+import logging
+logger = logging.getLogger(__name__)
+
 @app.on_event("startup")
 def startup_event():
     # Warm up database connection & populate local SQLite tables if needed
-    get_connection()
+    conn, db_type = get_connection()
+    try:
+        case_count = 0
+        embedding_count = 0
+        if db_type == "postgresql":
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM casemaster;")
+                case_count = cur.fetchone()[0]
+                try:
+                    cur.execute("SELECT COUNT(*) FROM case_embeddings;")
+                    embedding_count = cur.fetchone()[0]
+                except Exception:
+                    conn.rollback()
+                    embedding_count = 0
+        else:
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM casemaster;")
+            case_count = cur.fetchone()[0]
+            try:
+                cur.execute("SELECT COUNT(*) FROM case_embeddings;")
+                embedding_count = cur.fetchone()[0]
+            except Exception:
+                embedding_count = 0
+
+        if embedding_count == 0 or embedding_count < (case_count * 0.8):
+            msg = (
+                f"\n========================================================================\n"
+                f"STARTUP WARNING [{db_type.upper()}]: case_embeddings has {embedding_count} rows "
+                f"but casemaster has {case_count} rows.\n"
+                f"Semantic search will return empty results until services/embed_cases.py is run.\n"
+                f"========================================================================\n"
+            )
+            print(msg)
+            logger.warning(msg)
+        else:
+            print(f"Startup check: case_embeddings table verified with {embedding_count} rows [{db_type.upper()}].")
+            logger.info("Startup check: case_embeddings table verified with %s rows.", embedding_count)
+    except Exception as e:
+        logger.warning("Startup check warning: Could not verify case_embeddings count: %s", e)
+    finally:
+        from database import release_connection
+        release_connection(conn, db_type)
 
 @app.get("/api/health")
 def health():
