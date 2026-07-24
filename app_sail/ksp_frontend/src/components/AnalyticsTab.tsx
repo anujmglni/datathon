@@ -141,8 +141,8 @@ export default function AnalyticsTab() {
       return await toPng(elem, {
         cacheBust: true,
         backgroundColor: "#ffffff",
-        quality: 0.95,
-        pixelRatio: 2,
+        quality: 0.85,
+        pixelRatio: 1.2,
         filter: (node) => {
           if (node instanceof HTMLElement) {
             if (node.tagName === "BUTTON" || node.getAttribute("role") === "button") return false;
@@ -192,17 +192,14 @@ export default function AnalyticsTab() {
       ].join("\n");
 
       const res = await generatePdfReport(`KSP ${chartTitle} - ${district}`, markdown);
-      if (res.download_url) {
-        const pdfRes = await fetch(res.download_url);
-        const blob = await pdfRes.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
+      if (res && res.download_url) {
         const link = document.createElement("a");
-        link.href = blobUrl;
+        link.href = res.download_url;
+        link.target = "_blank";
         link.download = res.filename || `ksp_${chartTitle.toLowerCase().replace(/[^a-z0-9]/g, "_")}_report.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        window.URL.revokeObjectURL(blobUrl);
       }
     } catch (err) {
       console.error(`Chart PDF export failed for ${cardId}:`, err);
@@ -288,17 +285,14 @@ export default function AnalyticsTab() {
       ].join("\n");
 
       const res = await generatePdfReport(`KSP Executive Analytics Briefing - ${district}`, markdown);
-      if (res.download_url) {
-        const pdfRes = await fetch(res.download_url);
-        const blob = await pdfRes.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
+      if (res && res.download_url) {
         const link = document.createElement("a");
-        link.href = blobUrl;
+        link.href = res.download_url;
+        link.target = "_blank";
         link.download = res.filename || `ksp_analytics_dashboard_${district}_${Date.now()}.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        window.URL.revokeObjectURL(blobUrl);
       }
     } catch (e) {
       console.error("Dashboard PDF export failed:", e);
